@@ -1,0 +1,15 @@
+{
+  "name": "推しスクショ A4プリンター",
+  "short_name": "推しスクショ",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f7f2ef",
+  "theme_color": "#9a7165",
+  "icons": [
+    {
+      "src": "icon.png",
+      "sizes": "1024x1024",
+      "type": "image/png"
+    }
+  ]
+}
