@@ -24,7 +24,9 @@ body {
     sans-serif;
 }
 
-/* ヘッダー */
+/* =========================
+   ヘッダー
+========================= */
 
 header {
   background: #8f675b;
@@ -42,7 +44,9 @@ header p {
   font-size: 13px;
 }
 
-/* 操作ボタン */
+/* =========================
+   操作エリア
+========================= */
 
 .controls {
   padding: 18px;
@@ -79,7 +83,9 @@ input[type="file"] {
   display: none;
 }
 
-/* 情報 */
+/* =========================
+   情報
+========================= */
 
 .info {
   padding: 0 18px 15px;
@@ -87,7 +93,9 @@ input[type="file"] {
   color: #786862;
 }
 
-/* 画像一覧 */
+/* =========================
+   画像一覧
+========================= */
 
 #imageList {
   padding: 0 18px 30px;
@@ -100,7 +108,9 @@ input[type="file"] {
   gap: 16px;
 }
 
-/* 画像カード */
+/* =========================
+   画像カード
+========================= */
 
 .image-card {
   position: relative;
@@ -115,8 +125,6 @@ input[type="file"] {
     0 3px 12px rgba(0, 0, 0, 0.08);
 }
 
-/* スクショ */
-
 .image-card img {
   display: block;
 
@@ -129,7 +137,9 @@ input[type="file"] {
   border-radius: 8px;
 }
 
-/* 削除ボタン */
+/* =========================
+   削除ボタン
+========================= */
 
 .delete-button {
   position: absolute;
@@ -159,7 +169,9 @@ input[type="file"] {
   background: #8f675b;
 }
 
-/* 番号 */
+/* =========================
+   番号
+========================= */
 
 .image-number {
   margin-top: 7px;
@@ -171,7 +183,9 @@ input[type="file"] {
   color: #8a7770;
 }
 
-/* 空っぽ */
+/* =========================
+   空状態
+========================= */
 
 .empty {
   grid-column: 1 / -1;
@@ -182,14 +196,92 @@ input[type="file"] {
 
   color: #a08f89;
 }
+
+/* =========================
+   保存状態
+========================= */
+
+.save-status {
+  padding: 0 18px 15px;
+
+  font-size: 12px;
+
+  color: #8f675b;
+}
+
+
+/* =====================================================
+   印刷用
+===================================================== */
+
+@media print {
+
+  body {
+    background: white;
+  }
+
+  header,
+  .controls,
+  .info,
+  .save-status,
+  .image-number,
+  .delete-button {
+    display: none !important;
+  }
+
+  #imageList {
+    display: block;
+
+    padding: 0;
+
+    margin: 0;
+  }
+
+  .image-card {
+    box-shadow: none;
+
+    border-radius: 0;
+
+    padding: 0;
+
+    margin: 0;
+
+    /*
+     * 今は画像を1枚ずつPDFへ
+     * 元の比率を保って配置
+     */
+    page-break-after: always;
+
+    break-after: page;
+  }
+
+  .image-card:last-child {
+    page-break-after: auto;
+
+    break-after: auto;
+  }
+
+  .image-card img {
+    width: 100%;
+    max-height: none;
+
+    object-fit: contain;
+  }
+
+  @page {
+    size: A4 portrait;
+    margin: 10mm;
+  }
+}
 </style>
 </head>
+
 
 <body>
 
 <header>
   <h1>推しスクショ A4プリンター</h1>
-  <p>まずはスクショを集めるところから♡</p>
+  <p>スクショを集めて、あとでA4にまとめよう♡</p>
 </header>
 
 
@@ -211,6 +303,13 @@ input[type="file"] {
   </label>
 
 
+  <!-- PDF -->
+
+  <button id="pdfButton">
+    🖨️ PDF出力
+  </button>
+
+
   <!-- 全削除 -->
 
   <button id="clearButton">
@@ -222,6 +321,11 @@ input[type="file"] {
 
 <div class="info" id="info">
   画像はまだありません
+</div>
+
+
+<div class="save-status" id="saveStatus">
+  準備中…
 </div>
 
 
@@ -238,14 +342,258 @@ input[type="file"] {
 <script>
 
 /* =====================================================
-   画像データ
+   IndexedDB
 ===================================================== */
 
-let images = [];
+const DB_NAME = "oshiScreenshotPrinter";
+
+const DB_VERSION = 1;
+
+const STORE_NAME = "images";
+
+let db;
 
 
 /* =====================================================
-   要素
+   IndexedDBを開く
+===================================================== */
+
+function openDatabase() {
+
+  return new Promise(function(resolve, reject) {
+
+    const request =
+      indexedDB.open(
+        DB_NAME,
+        DB_VERSION
+      );
+
+
+    request.onupgradeneeded =
+      function(event) {
+
+        const database =
+          event.target.result;
+
+
+        if (!database.objectStoreNames.contains(STORE_NAME)) {
+
+          database.createObjectStore(
+            STORE_NAME,
+            {
+              keyPath: "id",
+              autoIncrement: true
+            }
+          );
+
+        }
+
+      };
+
+
+    request.onsuccess =
+      function(event) {
+
+        db = event.target.result;
+
+        resolve(db);
+
+      };
+
+
+    request.onerror =
+      function() {
+
+        reject(request.error);
+
+      };
+
+  });
+
+}
+
+
+/* =====================================================
+   画像一覧をDBから取得
+===================================================== */
+
+function getAllImages() {
+
+  return new Promise(function(resolve, reject) {
+
+    const transaction =
+      db.transaction(
+        STORE_NAME,
+        "readonly"
+      );
+
+    const store =
+      transaction.objectStore(
+        STORE_NAME
+      );
+
+    const request =
+      store.getAll();
+
+
+    request.onsuccess =
+      function() {
+
+        resolve(request.result);
+
+      };
+
+
+    request.onerror =
+      function() {
+
+        reject(request.error);
+
+      };
+
+  });
+
+}
+
+
+/* =====================================================
+   画像をDBへ保存
+===================================================== */
+
+function saveImage(blob, name) {
+
+  return new Promise(function(resolve, reject) {
+
+    const transaction =
+      db.transaction(
+        STORE_NAME,
+        "readwrite"
+      );
+
+    const store =
+      transaction.objectStore(
+        STORE_NAME
+      );
+
+
+    const request =
+      store.add({
+        blob: blob,
+        name: name,
+        created: Date.now()
+      });
+
+
+    request.onsuccess =
+      function() {
+
+        resolve(request.result);
+
+      };
+
+
+    request.onerror =
+      function() {
+
+        reject(request.error);
+
+      };
+
+  });
+
+}
+
+
+/* =====================================================
+   画像をDBから削除
+===================================================== */
+
+function deleteImage(id) {
+
+  return new Promise(function(resolve, reject) {
+
+    const transaction =
+      db.transaction(
+        STORE_NAME,
+        "readwrite"
+      );
+
+    const store =
+      transaction.objectStore(
+        STORE_NAME
+      );
+
+
+    const request =
+      store.delete(id);
+
+
+    request.onsuccess =
+      function() {
+
+        resolve();
+
+      };
+
+
+    request.onerror =
+      function() {
+
+        reject(request.error);
+
+      };
+
+  });
+
+}
+
+
+/* =====================================================
+   全画像削除
+===================================================== */
+
+function clearDatabase() {
+
+  return new Promise(function(resolve, reject) {
+
+    const transaction =
+      db.transaction(
+        STORE_NAME,
+        "readwrite"
+      );
+
+    const store =
+      transaction.objectStore(
+        STORE_NAME
+      );
+
+
+    const request =
+      store.clear();
+
+
+    request.onsuccess =
+      function() {
+
+        resolve();
+
+      };
+
+
+    request.onerror =
+      function() {
+
+        reject(request.error);
+
+      };
+
+  });
+
+}
+
+
+/* =====================================================
+   DOM
 ===================================================== */
 
 const fileInput =
@@ -257,64 +605,21 @@ const imageList =
 const info =
   document.getElementById("info");
 
+const saveStatus =
+  document.getElementById("saveStatus");
+
 const clearButton =
   document.getElementById("clearButton");
 
+const pdfButton =
+  document.getElementById("pdfButton");
+
 
 /* =====================================================
-   画像追加
+   現在表示している画像
 ===================================================== */
 
-fileInput.addEventListener(
-  "change",
-  function(event) {
-
-    const files =
-      Array.from(event.target.files);
-
-
-    if (files.length === 0) {
-      return;
-    }
-
-
-    files.forEach(function(file) {
-
-      if (!file.type.startsWith("image/")) {
-        return;
-      }
-
-
-      const reader =
-        new FileReader();
-
-
-      reader.onload =
-        function(e) {
-
-          images.push({
-            src: e.target.result
-          });
-
-
-          renderImages();
-
-        };
-
-
-      reader.readAsDataURL(file);
-
-    });
-
-
-    /*
-     * 同じ画像をもう一度選択できるようにする
-     */
-
-    fileInput.value = "";
-
-  }
-);
+let images = [];
 
 
 /* =====================================================
@@ -325,8 +630,6 @@ function renderImages() {
 
   imageList.innerHTML = "";
 
-
-  /* 画像がない場合 */
 
   if (images.length === 0) {
 
@@ -345,16 +648,12 @@ function renderImages() {
   }
 
 
-  /* 件数 */
-
   info.textContent =
     images.length + "枚の画像";
 
 
-  /* 画像を順番に表示 */
-
   images.forEach(
-    function(image, index) {
+    function(item, index) {
 
       const card =
         document.createElement("div");
@@ -363,16 +662,25 @@ function renderImages() {
         "image-card";
 
 
-      /* 画像 */
+      /*
+       * Blobから一時URLを作る
+       */
+
+      const url =
+        URL.createObjectURL(
+          item.blob
+        );
+
 
       const img =
         document.createElement("img");
 
-      img.src =
-        image.src;
+      img.src = url;
 
 
-      /* 削除ボタン */
+      /*
+       * 削除
+       */
 
       const deleteButton =
         document.createElement("button");
@@ -383,28 +691,50 @@ function renderImages() {
       deleteButton.textContent =
         "×";
 
-
       deleteButton.title =
         "この画像を削除";
 
 
-      /*
-       * この画像だけ削除
-       */
-
       deleteButton.addEventListener(
         "click",
-        function() {
+        async function() {
 
-          images.splice(index, 1);
+          const ok =
+            confirm(
+              "この画像を削除する？"
+            );
 
-          renderImages();
+
+          if (!ok) {
+            return;
+          }
+
+
+          try {
+
+            await deleteImage(item.id);
+
+            URL.revokeObjectURL(url);
+
+            await loadImages();
+
+          } catch(error) {
+
+            console.error(error);
+
+            alert(
+              "削除できませんでした"
+            );
+
+          }
 
         }
       );
 
 
-      /* 番号 */
+      /*
+       * 番号
+       */
 
       const number =
         document.createElement("div");
@@ -418,7 +748,9 @@ function renderImages() {
 
       card.appendChild(img);
 
-      card.appendChild(deleteButton);
+      card.appendChild(
+        deleteButton
+      );
 
       card.appendChild(number);
 
@@ -432,43 +764,246 @@ function renderImages() {
 
 
 /* =====================================================
-   全削除
+   DBから画像を読み込む
 ===================================================== */
 
-clearButton.addEventListener(
-  "click",
-  function() {
+async function loadImages() {
 
-    if (images.length === 0) {
-      return;
-    }
+  try {
 
-
-    const result =
-      confirm(
-        "全部の画像を削除する？"
-      );
+    images =
+      await getAllImages();
 
 
-    if (!result) {
-      return;
-    }
+    /*
+     * 古い順
+     */
 
-
-    images = [];
+    images.sort(
+      function(a, b) {
+        return a.id - b.id;
+      }
+    );
 
 
     renderImages();
+
+
+    if (images.length > 0) {
+
+      saveStatus.textContent =
+        "✓ 自動保存されています";
+
+    } else {
+
+      saveStatus.textContent =
+        "画像を追加すると自動保存されます";
+
+    }
+
+  } catch(error) {
+
+    console.error(error);
+
+    saveStatus.textContent =
+      "保存データを読み込めませんでした";
+
+  }
+
+}
+
+
+/* =====================================================
+   画像追加
+===================================================== */
+
+fileInput.addEventListener(
+  "change",
+  async function(event) {
+
+    const files =
+      Array.from(
+        event.target.files
+      );
+
+
+    if (files.length === 0) {
+      return;
+    }
+
+
+    saveStatus.textContent =
+      "保存中…";
+
+
+    try {
+
+      for (const file of files) {
+
+        if (
+          !file.type.startsWith("image/")
+        ) {
+          continue;
+        }
+
+
+        /*
+         * FileそのものをBlobとして
+         * IndexedDBへ保存
+         *
+         * DataURL化しないので
+         * 大きな画像でも比較的安全
+         */
+
+        await saveImage(
+          file,
+          file.name
+        );
+
+      }
+
+
+      await loadImages();
+
+
+      saveStatus.textContent =
+        "✓ 自動保存しました";
+
+
+    } catch(error) {
+
+      console.error(error);
+
+      saveStatus.textContent =
+        "保存に失敗しました";
+
+      alert(
+        "画像の保存に失敗しました。\n" +
+        "ブラウザの保存領域を確認してみてね。"
+      );
+
+    }
+
+
+    /*
+     * 同じ画像を再度選べるようにする
+     */
+
+    fileInput.value = "";
 
   }
 );
 
 
 /* =====================================================
-   初期表示
+   全削除
 ===================================================== */
 
-renderImages();
+clearButton.addEventListener(
+  "click",
+  async function() {
+
+    if (images.length === 0) {
+      return;
+    }
+
+
+    const ok =
+      confirm(
+        "保存されている画像を全部削除する？"
+      );
+
+
+    if (!ok) {
+      return;
+    }
+
+
+    try {
+
+      await clearDatabase();
+
+      await loadImages();
+
+      saveStatus.textContent =
+        "画像をすべて削除しました";
+
+    } catch(error) {
+
+      console.error(error);
+
+      alert(
+        "削除できませんでした"
+      );
+
+    }
+
+  }
+);
+
+
+/* =====================================================
+   PDF出力
+===================================================== */
+
+pdfButton.addEventListener(
+  "click",
+  function() {
+
+    if (images.length === 0) {
+
+      alert(
+        "先にスクショを追加してね！"
+      );
+
+      return;
+
+    }
+
+
+    /*
+     * ブラウザの印刷画面を開く。
+     *
+     * 「送信先 → PDFに保存」
+     * を選べばPDFとして保存できる。
+     *
+     * 元画像を再圧縮していないため、
+     * 画像の品質をできるだけ維持できる。
+     */
+
+    window.print();
+
+  }
+);
+
+
+/* =====================================================
+   起動
+===================================================== */
+
+(async function() {
+
+  try {
+
+    await openDatabase();
+
+    await loadImages();
+
+  } catch(error) {
+
+    console.error(error);
+
+    saveStatus.textContent =
+      "このブラウザでは保存機能を利用できません";
+
+    alert(
+      "画像保存機能を開始できませんでした。\n" +
+      "Chromeなどの最新版ブラウザで試してみてね。"
+    );
+
+  }
+
+})();
 
 </script>
 
