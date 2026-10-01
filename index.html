@@ -1,447 +1,787 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#9a7165">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <title>推しスクショ A4プリンター</title>
+
 <style>
-*{box-sizing:border-box}
-body{margin:0;background:#f7f2ef;color:#4b3b36;font-family:-apple-system,BlinkMacSystemFont,"Noto Sans JP",sans-serif}
-header{background:#9a7165;color:white;padding:18px 16px 16px;position:sticky;top:0;z-index:5;box-shadow:0 2px 8px #0001}
-h1{font-size:20px;margin:0 0 4px}.sub{font-size:12px;opacity:.9}
-.controls{padding:14px 12px;display:flex;flex-wrap:wrap;gap:8px}
-button,.fileBtn,select{border:0;border-radius:12px;padding:11px 14px;background:white;color:#5a4640;box-shadow:0 1px 5px #0001;font-size:14px}
-button.primary,.fileBtn{background:#9a7165;color:white;font-weight:600}
-button:active,.fileBtn:active{transform:scale(.98)}
-input[type=file]{display:none}
-.settings{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:0 12px 8px;font-size:13px}
-.settings label{background:white;border-radius:12px;padding:8px 10px;box-shadow:0 1px 4px #0001}
-.settings input{width:45px;border:0;border-bottom:1px solid #baa49d;text-align:center;font-size:13px}
-.info{padding:4px 14px 12px;font-size:12px;color:#806d66}
-.pages{padding:0 10px 30px}.pageWrap{margin:0 auto 24px;max-width:850px}
-.pageTitle{font-size:13px;margin:0 0 7px 4px;font-weight:600}
-.page{position:relative;background:white;width:100%;aspect-ratio:297/210;box-shadow:0 3px 15px #0002;overflow:hidden}
-.item{position:absolute;overflow:hidden;background:#eee}.item img{width:100%;height:100%;display:block}
-.empty{padding:40px 20px;text-align:center;color:#a08e87;font-size:14px}
-.note{padding:0 14px 20px;font-size:12px;color:#806d66;line-height:1.7}
-#status{padding:0 14px 12px;font-size:12px;color:#7d5c50}
-@media print{
- body{background:white}
- header,.controls,.settings,.info,.note,#status,.pageTitle{display:none!important}
- .pages{padding:0}.pageWrap{margin:0;width:297mm;height:210mm;max-width:none;page-break-after:always}
- .page{width:297mm;height:210mm;box-shadow:none}
+* {
+  box-sizing: border-box;
 }
 
+body {
+  margin: 0;
+  background: #f5f1ef;
+  color: #4d403b;
+  font-family:
+    -apple-system,
+    BlinkMacSystemFont,
+    "Hiragino Kaku Gothic ProN",
+    "Yu Gothic",
+    Meiryo,
+    sans-serif;
+}
 
+/* =========================
+   ヘッダー
+========================= */
 
-.item{touch-action:manipulation}
-.item .editBadge{position:absolute;right:3px;bottom:3px;background:#9a7165;color:#fff;border-radius:8px;padding:2px 5px;font-size:9px;opacity:.9;z-index:2}
+header {
+  background: #8f675b;
+  color: white;
+  padding: 18px 24px;
+}
 
-.saveStatus{font-size:12px;color:#806d66;padding:0 14px 8px}
+header h1 {
+  margin: 0;
+  font-size: 22px;
+}
+
+header p {
+  margin: 5px 0 0;
+  font-size: 13px;
+  opacity: 0.9;
+}
+
+/* =========================
+   操作エリア
+========================= */
+
+.controls {
+  padding: 18px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+button,
+.file-label {
+  border: none;
+  border-radius: 10px;
+  padding: 11px 16px;
+  font-size: 14px;
+  cursor: pointer;
+  background: #8f675b;
+  color: white;
+}
+
+button:hover,
+.file-label:hover {
+  opacity: 0.85;
+}
+
+.file-label {
+  display: inline-block;
+}
+
+input[type="file"] {
+  display: none;
+}
+
+.settings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  padding: 0 18px 15px;
+  font-size: 14px;
+}
+
+.settings label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.settings input {
+  width: 70px;
+  padding: 6px 8px;
+  border: 1px solid #d8cbc6;
+  border-radius: 7px;
+}
+
+/* =========================
+   情報
+========================= */
+
+.info {
+  padding: 0 18px 15px;
+  font-size: 13px;
+  color: #786862;
+}
+
+/* =========================
+   プレビュー
+========================= */
+
+#preview {
+  padding: 20px;
+}
+
+.page {
+  position: relative;
+
+  /* A4横 */
+  width: 297mm;
+  height: 210mm;
+
+  margin: 0 auto 30px;
+
+  background: white;
+
+  box-shadow:
+    0 4px 20px rgba(0,0,0,0.12);
+
+  overflow: hidden;
+}
+
+/* =========================
+   画像
+========================= */
+
+.item {
+  position: absolute;
+  overflow: hidden;
+}
+
+.item img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* =========================
+   印刷
+========================= */
+
+@media print {
+
+  body {
+    background: white;
+  }
+
+  header,
+  .controls,
+  .settings,
+  .info {
+    display: none !important;
+  }
+
+  #preview {
+    padding: 0;
+  }
+
+  .page {
+    margin: 0;
+    box-shadow: none;
+
+    page-break-after: always;
+  }
+
+  .page:last-child {
+    page-break-after: auto;
+  }
+
+  @page {
+    size: A4 landscape;
+    margin: 0;
+  }
+}
+
+/* =========================
+   スマホ・小さい画面
+========================= */
+
+@media screen and (max-width: 1000px) {
+
+  .page {
+    transform-origin: top left;
+    transform: scale(0.7);
+
+    margin-bottom: -60mm;
+    margin-left: 0;
+  }
+
+}
 </style>
 </head>
+
 <body>
+
 <header>
-<h1>推しスクショ A4プリンター</h1>
-<div class="sub">A4横・高さ4.5cmを基準に左から順番に配置・高画質PDF ♡</div>
+  <h1>推しスクショ A4プリンター</h1>
+  <p>スクショを選んで、A4に自動で敷き詰めよう♡</p>
 </header>
 
 <div class="controls">
-<label class="fileBtn">スクショを選ぶ<input id="files" type="file" accept="image/*" multiple></label>
-<button class="primary" id="auto">A4に自動配置</button>
-<button class="primary" id="pdf">高画質PDFを作る</button>
-<button id="print">印刷する</button>
-<button id="saveNow">一時保存</button>
-<button id="clear">全部消す</button>
+
+  <!-- 画像追加 -->
+  <label class="file-label">
+    📷 スクショを追加
+    <input
+      id="fileInput"
+      type="file"
+      accept="image/*"
+      multiple
+    >
+  </label>
+
+  <!-- 配置 -->
+  <button id="layoutButton">
+    🖼️ A4に敷き詰める
+  </button>
+
+  <!-- 印刷 -->
+  <button id="printButton">
+    🖨️ 印刷する
+  </button>
+
+  <!-- 全削除 -->
+  <button id="clearButton">
+    🗑️ 全部消す
+  </button>
+
 </div>
 
 <div class="settings">
-<label>基本の高さ <input id="targetH" type="number" min="1" max="15" step="0.1" value="4.5"> cm</label>
-<label>画像間隔 <input id="gap" type="number" min="0" max="20" value="3"> mm</label>
-<label>ページ余白 <input id="margin" type="number" min="0" max="20" value="5"> mm</label>
-<label>向き
-<select id="orientation">
-<option value="none">元の向き</option>
-<option value="rotate">90°回転</option>
-</select>
-</label>
+
+  <label>
+    基本の高さ
+    <input
+      id="heightInput"
+      type="number"
+      value="4.5"
+      min="1"
+      max="10"
+      step="0.1"
+    >
+    cm
+  </label>
+
+  <label>
+    画像のすき間
+    <input
+      id="gapInput"
+      type="number"
+      value="0.3"
+      min="0"
+      max="3"
+      step="0.1"
+    >
+    cm
+  </label>
+
+  <label>
+    A4の余白
+    <input
+      id="marginInput"
+      type="number"
+      value="0.5"
+      min="0"
+      max="3"
+      step="0.1"
+    >
+    cm
+  </label>
+
 </div>
 
-<div class="info" id="info">まだ画像がありません　｜　スクショは何回でも追加できます</div>
-<div class="info" id="saveStatus">このブラウザに自動保存されます</div>
-<div id="status"></div>
-<div class="pages" id="pages">
-<div class="empty">スクショを選んでね<br>何枚でもOK。右端にはみ出す画像は次の段へ。A4横に入りきらなければ次ページへ送ります。</div>
-</div>
-<div class="note">
-<b>PDFについて</b><br>
-「高画質PDFを作る」では、元画像をキャンバスに描き直したりJPEGへ再圧縮したりせず、元画像データをPDFへ直接配置します。<br>
-そのため、アプリ画面のスクショをPDFにする方式より画質を保ちやすい設計です。<br>
-※PDFの仕様上、画像の実ファイルサイズ・プリンター・PDFビューアなどによって最終的な見え方は変わります。
+<div class="info" id="info">
+  まだ画像がありません
 </div>
 
+<div id="preview"></div>
 
-<div class="cropTools"><button id="cropReset">元に戻す</button><button id="cropCancel">キャンセル</button><button class="primary" id="cropApply">切り取りを適用</button></div>
-<div class="cropHint">四隅を動かして範囲を変更。枠の中をドラッグすると位置を移動できます。</div>
-</div></div>
 
 <script>
-const $=id=>document.getElementById(id);
-let imgs=[];
-let cropTarget=null,cropDraft=null,cropPointer=null;
+
+/* =========================================================
+   データ
+========================================================= */
+
+let images = [];
 
 
-const STORAGE_KEY="oshi_a4_printer_project_v1";
+/* =========================================================
+   DOM
+========================================================= */
 
-function showSave(message){
-  const el=$("saveStatus");
-  if(el) el.textContent=message;
-}
+const fileInput =
+  document.getElementById("fileInput");
 
-function saveProject(){
-  try{
-    const data={
-      version:1,
-      savedAt:new Date().toISOString(),
-      settings:{
-        targetH:$("targetH")?.value || "4.5",
-        gap:$("gap")?.value || "3",
-        margin:$("margin")?.value || "5",
-        order:$("order")?.value || "original",
-        orientation:$("orientation")?.value || "none"
-      },
-      images:imgs.map(x=>({
-        name:x.name,w:x.w,h:x.h,ratio:x.ratio,rotate:x.rotate||0,
-        // Image data is stored locally so the project can survive reloads.
-        data:x.data || null
-      }))
-    };
-    // Don't save if images have not yet been converted to data.
-    // saveProjectAsync() below handles actual image persistence.
-    localStorage.setItem(STORAGE_KEY,JSON.stringify(data));
-  }catch(e){
-    console.warn("local save failed",e);
+const layoutButton =
+  document.getElementById("layoutButton");
+
+const printButton =
+  document.getElementById("printButton");
+
+const clearButton =
+  document.getElementById("clearButton");
+
+const preview =
+  document.getElementById("preview");
+
+const info =
+  document.getElementById("info");
+
+const heightInput =
+  document.getElementById("heightInput");
+
+const gapInput =
+  document.getElementById("gapInput");
+
+const marginInput =
+  document.getElementById("marginInput");
+
+
+/* =========================================================
+   画像追加
+========================================================= */
+
+fileInput.addEventListener("change", function(event) {
+
+  const files = Array.from(event.target.files);
+
+  if (!files.length) {
+    return;
   }
-}
-
-async function imageToDataURL(file){
-  return await new Promise((resolve,reject)=>{
-    const reader=new FileReader();
-    reader.onload=()=>resolve(reader.result);
-    reader.onerror=reject;
-    reader.readAsDataURL(file);
-  });
-}
-
-async function saveProjectAsync(){
-  try{
-    for(const x of imgs){
-      if(!x.data && x.file){
-        x.data=await imageToDataURL(x.file);
-      }
-    }
-    const data={
-      version:1,
-      savedAt:new Date().toISOString(),
-      settings:{
-        targetH:$("targetH")?.value || "4.5",
-        gap:$("gap")?.value || "3",
-        margin:$("margin")?.value || "5",
-        order:$("order")?.value || "original",
-        orientation:$("orientation")?.value || "none"
-      },
-      images:imgs.map(x=>({
-        name:x.name,w:x.w,h:x.h,ratio:x.ratio,rotate:x.rotate||0,data:x.data||null
-      }))
-    };
-    localStorage.setItem(STORAGE_KEY,JSON.stringify(data));
-    showSave("自動保存済み");
-  }catch(e){
-    console.warn(e);
-    showSave("画像が大きいため自動保存できませんでした");
-  }
-}
-
-async function restoreProject(){
-  try{
-    const raw=localStorage.getItem(STORAGE_KEY);
-    if(!raw)return;
-    const data=JSON.parse(raw);
-    if(!data.images || !data.images.length)return;
-
-    if(data.settings){
-      if($("targetH"))$("targetH").value=data.settings.targetH||"4.5";
-      if($("gap"))$("gap").value=data.settings.gap||"3";
-      if($("margin"))$("margin").value=data.settings.margin||"5";
-      if($("order"))$("order").value=data.settings.order||"original";
-      if($("orientation"))$("orientation").value=data.settings.orientation||"none";
-    }
-
-    for(const x of data.images){
-      if(!x.data)continue;
-      const blob=await (await fetch(x.data)).blob();
-      const url=URL.createObjectURL(blob);
-      const image=new Image();
-      await new Promise((resolve,reject)=>{
-        image.onload=resolve;image.onerror=reject;image.src=url;
-      });
-      imgs.push({
-        src:url,w:image.naturalWidth||x.w,h:image.naturalHeight||x.h,
-        ratio:(image.naturalWidth||x.w)/(image.naturalHeight||x.h),
-        name:x.name||"画像",idx:(Date.now()+"_"+Math.random()),
-        file:blob, data:x.data, rotate:x.rotate||0
-      });
-    }
-    render();
-    showSave("前回の作業を復元しました");
-  }catch(e){
-    console.warn("restore failed",e);
-    showSave("前回の作業を復元できませんでした");
-  }
-}
-
-$("saveNow").addEventListener("click",async()=>{
-  await saveProjectAsync();
-  showSave("一時保存しました");
-});
-
-$("files").addEventListener("change", function(e){
-  const files = Array.from(e.target.files || []);
-  if (!files.length) return;
 
   let loaded = 0;
-  files.forEach(function(file){
-    const url = URL.createObjectURL(file);
-    const image = new Image();
 
-    image.onload = function(){
-      imgs.push({
-        src:url,
-        w:image.naturalWidth,
-        h:image.naturalHeight,
-        ratio:image.naturalWidth/image.naturalHeight,
-        name:file.name,
-        idx:(Date.now()+"_"+Math.random()),
-        file:file,
-        rotate:0
-      });
+  files.forEach(function(file) {
+
+    if (!file.type.startsWith("image/")) {
       loaded++;
-      render();
-      saveProject();
-      if(loaded===files.length){
-        showSave("スクショを追加して保存しました");
-      }
+      return;
+    }
+
+    const reader = new FileReader();
+
+    reader.onload = function(e) {
+
+      const img = new Image();
+
+      img.onload = function() {
+
+        images.push({
+          src: e.target.result,
+          width: img.naturalWidth,
+          height: img.naturalHeight
+        });
+
+        loaded++;
+
+        updateInfo();
+
+        /*
+         * 画像を追加したら自動的に
+         * A4へ配置
+         */
+        buildLayout();
+
+      };
+
+      img.src = e.target.result;
+
     };
 
-    image.onerror = function(){
-      URL.revokeObjectURL(url);
-      loaded++;
-      if(loaded===files.length) showSave("一部の画像を読み込めませんでした");
-    };
+    reader.readAsDataURL(file);
 
-    image.src=url;
   });
 
-  // Reset input so selecting the same file again also triggers change.
-  e.target.value="";
-});
-["targetH","gap","margin","order","orientation"].forEach(id=>{
-  const el=$(id);
-  if(el)el.addEventListener("change",()=>{render();saveProjectAsync();});
-});
-$("auto").addEventListener("click",render);
-$("print").addEventListener("click",()=>window.print());
-$("pdf").addEventListener("click",makePDF);
-$("clear").addEventListener("click",()=>{
-  imgs.forEach(x=>{if(x.src)URL.revokeObjectURL(x.src)});
-  imgs=[];
-  $("files").value="";
-  localStorage.removeItem(STORAGE_KEY);
-  render();
-  showSave("保存データも削除しました");
+  /*
+   * 同じ画像をもう一度選べるようにする
+   */
+  fileInput.value = "";
+
 });
 
-function sorted(){
-  let a = [...imgs];
-  const mode = $("order").value;
-  if(mode==="size") a.sort((x,y)=>(y.w*y.h)-(x.w*x.h));
-  if(mode==="tall") a.sort((x,y)=>(y.h/y.w)-(x.h/x.w));
-  return a;
+
+/* =========================================================
+   情報表示
+========================================================= */
+
+function updateInfo() {
+
+  if (images.length === 0) {
+
+    info.textContent =
+      "まだ画像がありません";
+
+    return;
+  }
+
+  info.textContent =
+    images.length +
+    "枚の画像を読み込み中・配置済み";
 }
 
-/* A4: 210 x 297 mm. Shelf packing; every image retains its original ratio. */
-function buildLayouts(){
-  const gap=(Number($("gap").value)||0), margin=(Number($("margin").value)||0);
-  const targetH=(Number($("targetH").value)||4.5)*10;
-  const W=297,H=210, usableW=W-margin*2, usableH=H-margin*2;
-  const forceRotate=$("orientation").value==="rotate";
-  let pool=sorted(), pages=[], guard=0;
 
-  while(pool.length && guard++<300){
-    let page=[], row=[], x=margin, y=margin, rowH=targetH;
-    while(pool.length){
-      const it=pool[0];
-      const ratio=it.ratio;
-      const rotate=forceRotate;
-      const displayRatio=rotate ? 1/ratio : ratio;
-      const iw=targetH*displayRatio;
-      const ih=targetH;
+/* =========================================================
+   A4配置
+========================================================= */
 
-      // If this image doesn't fit in the current row, start a new row.
-      if(row.length && x+iw > W-margin+0.001){
-        y += rowH + gap;
-        x = margin;
-        row = [];
-        rowH = targetH;
-      }
+function buildLayout() {
 
-      // If it doesn't fit vertically, move to the next page.
-      if(y+ih > H-margin+0.001){
-        break;
-      }
+  if (images.length === 0) {
 
-      pool.shift();
-      const placed={...it,x,y,w:iw,h:ih,rotate:rotate?90:0};
-      page.push(placed); row.push(placed); x+=iw+gap;
+    preview.innerHTML = "";
+
+    updateInfo();
+
+    return;
+  }
+
+  /*
+   * A4横
+   *
+   * 幅 297mm
+   * 高さ 210mm
+   */
+
+  const A4_WIDTH = 297;
+  const A4_HEIGHT = 210;
+
+  /*
+   * cm → mm
+   */
+
+  const targetHeight =
+    Number(heightInput.value) * 10;
+
+  const gap =
+    Number(gapInput.value) * 10;
+
+  const margin =
+    Number(marginInput.value) * 10;
+
+
+  /*
+   * 実際に使える範囲
+   */
+
+  const usableWidth =
+    A4_WIDTH - margin * 2;
+
+  const usableHeight =
+    A4_HEIGHT - margin * 2;
+
+
+  /*
+   * ページを作る
+   */
+
+  const pages = [];
+
+  let currentPage = [];
+
+  let x = margin;
+
+  let y = margin;
+
+  let rowHeight = 0;
+
+
+  /*
+   * 画像を選んだ順番に配置
+   */
+
+  images.forEach(function(image) {
+
+    /*
+     * 元画像の縦横比
+     */
+
+    const ratio =
+      image.width / image.height;
+
+
+    /*
+     * 基本の高さ
+     *
+     * 例：
+     * 高さ45mmなら
+     * 横幅は元画像の比率で決定
+     */
+
+    let h = targetHeight;
+
+    let w = h * ratio;
+
+
+    /*
+     * 横幅がA4の使用可能幅より
+     * 大きい場合だけ縮小
+     *
+     * それ以外は高さ4.5cmを維持
+     */
+
+    if (w > usableWidth) {
+
+      w = usableWidth;
+      h = w / ratio;
+
     }
 
-    // Never shrink tiny. If a single image is wider than A4, scale only to fit width.
-    if(!page.length){
-      const it=pool.shift();
-      const ratio=it.ratio;
-      const iw=Math.min(targetH*ratio,usableW);
-      const ih=iw/ratio;
-      page=[{...it,x:margin,y:margin,w:iw,h:ih,rotate:0}];
+
+    /*
+     * 今の段に入らないなら
+     * 次の段へ
+     */
+
+    if (
+      x !== margin &&
+      x + w > A4_WIDTH - margin
+    ) {
+
+      x = margin;
+
+      y += rowHeight + gap;
+
+      rowHeight = 0;
+
     }
 
-    pages.push(page);
-  }
-  return pages;
-}
-function render(){
-  const root=$("pages");root.innerHTML="";
-  if(!imgs.length){
-    root.innerHTML='<div class="empty">スクショを選んでね<br>何枚でもOK。右端にはみ出す画像は次の段へ。A4横に入りきらなければ次ページへ送ります。</div>';
-    $("info").textContent="まだ画像がありません";return;
-  }
-  const pages=buildLayouts();
-  pages.forEach((items,p)=>{
-    const wrap=document.createElement("div");wrap.className="pageWrap";
-    wrap.innerHTML=`<div class="pageTitle">A4 ${p+1}ページ目　${items.length}枚</div>`;
-    const page=document.createElement("div");page.className="page";
-    items.forEach(it=>{
-      const d=document.createElement("div");d.className="item";
-      d.style.left=it.x/297*100+"%";d.style.top=it.y/210*100+"%";
-      d.style.width=it.w/297*100+"%";d.style.height=it.h/210*100+"%";
-      d.draggable=true;
-      const im=document.createElement("img");im.src=it.src;im.alt=it.name;
-      if(it.rotate===90){im.style.transform="rotate(90deg)";im.style.width="100%";im.style.height="100%";im.style.objectFit="contain";}
-      d.appendChild(im);
-      d.title="長押しして順番を変更";
-      d.addEventListener("contextmenu",e=>e.preventDefault());
-      let pressTimer=null;
-      d.addEventListener("pointerdown",e=>{
-        pressTimer=setTimeout(()=>{d.classList.add("selected");startReorder(it)},500);
-      });
-      d.addEventListener("pointerup",()=>clearTimeout(pressTimer));
-      d.addEventListener("pointercancel",()=>clearTimeout(pressTimer));
-      page.appendChild(d);
+
+    /*
+     * 縦方向に入らないなら
+     * 次のページへ
+     */
+
+    if (
+      y + h > A4_HEIGHT - margin
+    ) {
+
+      pages.push(currentPage);
+
+      currentPage = [];
+
+      x = margin;
+      y = margin;
+      rowHeight = 0;
+
+    }
+
+
+    /*
+     * 配置情報
+     */
+
+    currentPage.push({
+      src: image.src,
+      x: x,
+      y: y,
+      width: w,
+      height: h
     });
-    wrap.appendChild(page);root.appendChild(wrap);
+
+
+    /*
+     * 次の位置
+     */
+
+    x += w + gap;
+
+    rowHeight =
+      Math.max(rowHeight, h);
+
   });
-  $("info").textContent=`${imgs.length}枚 → A4 ${pages.length}ページに自動配置`;
-}
 
 
+  /*
+   * 最後のページを追加
+   */
 
-function esc(s){return String(s).replace(/\\/g,"\\\\").replace(/\(/g,"\\(").replace(/\)/g,"\\)");}
-function bytes(s){return new TextEncoder().encode(s);}
-function concat(arrs){
-  let n=arrs.reduce((s,a)=>s+a.length,0),out=new Uint8Array(n),p=0;
-  arrs.forEach(a=>{out.set(a,p);p+=a.length});return out;
-}
-async function fileBytes(f){return new Uint8Array(await f.arrayBuffer());}
-function findJPEGSize(b){
-  for(let i=2;i<b.length-9;){
-    if(b[i]!==0xff){i++;continue}
-    let marker=b[i+1];
-    if(marker===0xd8||marker===0xd9){i+=2;continue}
-    if(i+4>=b.length)break;
-    let len=(b[i+2]<<8)|b[i+3];
-    if(marker>=0xc0&&marker<=0xc3)return {h:(b[i+5]<<8)|b[i+6],w:(b[i+7]<<8)|b[i+8]};
-    i+=2+len;
+  if (currentPage.length > 0) {
+
+    pages.push(currentPage);
+
   }
-  return null;
+
+
+  /*
+   * 表示を作る
+   */
+
+  renderPages(pages);
+
 }
-function pdfObj(id,body){return concat([bytes(id+" 0 obj\n"),body,bytes("\nendobj\n")]);}
 
-async function createPDF(pages){
-  const objects=[],offsets=[0],imageObjs=[];
-  const add=(b)=>{objects.push(b);return objects.length;};
-  const catalogId=add(null),pagesId=add(null);
 
-  for(const pageItems of pages){
-    const imgsForPage=[];
-    for(const it of pageItems){
-      const data=await fileBytes(it.file);
-      const type=(it.file.type||"").toLowerCase();
-      if(type==="image/jpeg"||type==="image/jpg"){
-        const sz=findJPEGSize(data)||{w:it.w*3.78,h:it.h*3.78};
-        const id=add(concat([
-          bytes("<< /Type /XObject /Subtype /Image /Width "+sz.w+" /Height "+sz.h+
-          " /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length "+data.length+" >>\nstream\n"),
-          data,bytes("\nendstream")
-        ]));
-        imgsForPage.push({id,w:sz.w,h:sz.h,it});
-      }else{
-        // Convert non-JPEG images to PNG-free RGB JPEG at source resolution.
-        // This branch is used mainly for PNG/WebP/browser formats.
-        const bmp=await createImageBitmap(it.file);
-        const c=document.createElement("canvas");c.width=bmp.width;c.height=bmp.height;
-        const ctx=c.getContext("2d");ctx.drawImage(bmp,0,0);bmp.close();
-        const blob=await new Promise(r=>c.toBlob(r,"image/jpeg",1.0));
-        const d=await fileBytes(blob),sz={w:c.width,h:c.height};
-        const id=add(concat([
-          bytes("<< /Type /XObject /Subtype /Image /Width "+sz.w+" /Height "+sz.h+
-          " /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length "+d.length+" >>\nstream\n"),
-          d,bytes("\nendstream")
-        ]));
-        imgsForPage.push({id,w:sz.w,h:sz.h,it});
-      }
+/* =========================================================
+   ページ描画
+========================================================= */
+
+function renderPages(pages) {
+
+  preview.innerHTML = "";
+
+
+  pages.forEach(function(pageItems, pageIndex) {
+
+    const page =
+      document.createElement("div");
+
+    page.className = "page";
+
+
+    pageItems.forEach(function(item) {
+
+      const box =
+        document.createElement("div");
+
+      box.className = "item";
+
+
+      /*
+       * mm → CSSでそのまま指定
+       */
+
+      box.style.left =
+        item.x + "mm";
+
+      box.style.top =
+        item.y + "mm";
+
+      box.style.width =
+        item.width + "mm";
+
+      box.style.height =
+        item.height + "mm";
+
+
+      const img =
+        document.createElement("img");
+
+      img.src = item.src;
+
+
+      box.appendChild(img);
+
+      page.appendChild(box);
+
+    });
+
+
+    preview.appendChild(page);
+
+  });
+
+
+  info.textContent =
+    images.length +
+    "枚 / " +
+    pages.length +
+    "ページ";
+
+}
+
+
+/* =========================================================
+   A4に敷き詰めるボタン
+========================================================= */
+
+layoutButton.addEventListener(
+  "click",
+  function() {
+
+    buildLayout();
+
+  }
+);
+
+
+/* =========================================================
+   印刷
+========================================================= */
+
+printButton.addEventListener(
+  "click",
+  function() {
+
+    if (images.length === 0) {
+
+      alert("先に画像を追加してね！");
+
+      return;
     }
 
-    let content="";
-    imgsForPage.forEach((im,n)=>{
-      const x=im.it.x*72/25.4,y=(210-im.it.y-im.it.h)*72/25.4;
-      const w=im.it.w*72/25.4,h=im.it.h*72/25.4;
-      content+=`q ${w.toFixed(4)} 0 0 ${h.toFixed(4)} ${x.toFixed(4)} ${y.toFixed(4)} cm /Im${n} Do Q\\n`;
-    });
-    const contentId=add(concat([
-      bytes(`<< /Length ${bytes(content).length} >>\nstream\n`),bytes(content),bytes("endstream")
-    ]));
-    const resources="<< /XObject << "+imgsForPage.map((x,n)=>`/Im${n} ${x.id} 0 R`).join(" ")+" >> >>";
-    const pageId=add(bytes(`<< /Type /Page /Parent ${pagesId} 0 R /MediaBox [0 0 841.8898 595.2756] /Resources ${resources} /Contents ${contentId} 0 R >>`));
-    imageObjs.push(pageId);
+    buildLayout();
+
+    setTimeout(function() {
+
+      window.print();
+
+    }, 200);
+
   }
+);
 
-  objects[catalogId-1]=bytes(`<< /Type /Catalog /Pages ${pagesId} 0 R >>`);
-  objects[pagesId-1]=bytes(`<< /Type /Pages /Kids [${imageObjs.map(id=>id+" 0 R").join(" ")}] /Count ${imageObjs.length} >>`);
 
-  let chunks=[bytes("%PDF-1.4\n%\xFF\xFF\xFF\xFF\n")],pos=chunks[0].length;
-  for(let i=0;i<objects.length;i++){
-    offsets[i+1]=pos;
-    const o=pdfObj(i+1,objects[i]);chunks.push(o);pos+=o.length;
+/* =========================================================
+   全削除
+========================================================= */
+
+clearButton.addEventListener(
+  "click",
+  function() {
+
+    if (images.length === 0) {
+      return;
+    }
+
+
+    const ok =
+      confirm(
+        "読み込んだ画像を全部消しますか？"
+      );
+
+
+    if (!ok) {
+      return;
+    }
+
+
+    images = [];
+
+    preview.innerHTML = "";
+
+    updateInfo();
+
   }
-  const xref=pos;
-  let table=`xref\n0 ${objects.length+1}\n0000000000 65535 f \n`;
-  for(let i=1;i<=objects.length;i++)table+=String(offsets[i]).padStart(10,"0")+" 00000 n \n";
-  chunks.push(bytes(table+`trailer\n<< /Size ${objects.length+1} /Root ${catalogId} 0 R >>\nstartxref\n${xref}\n%%EOF`));
-  return concat(chunks);
-}
+);
 
-render();
-restoreProject();
+
+/* =========================================================
+   設定変更時
+========================================================= */
+
+heightInput.addEventListener(
+  "change",
+  buildLayout
+);
+
+gapInput.addEventListener(
+  "change",
+  buildLayout
+);
+
+marginInput.addEventListener(
+  "change",
+  buildLayout
+);
+
+
+/* =========================================================
+   初期状態
+========================================================= */
+
+updateInfo();
+
 </script>
+
 </body>
 </html>
