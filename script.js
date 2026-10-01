@@ -1,1591 +1,185 @@
-const DB_NAME="oshiScreenshotPrinter";
-const DB_VERSION=4;
-const STORE_NAME="images";
+const APP_VERSION = '1.4.5';
 
-const A4_WIDTH=210;
-const A4_HEIGHT=297;
+const CACHE_NAME = `oshi-screenshot-printer-${APP_VERSION}`;
 
-const fileInput=document.getElementById("fileInput");
-const preview=document.getElementById("preview");
-const info=document.getElementById("info");
-const saveStatus=document.getElementById("saveStatus");
-
-const pdfButton=document.getElementById("pdfButton");
-const deleteModeButton=document.getElementById("deleteModeButton");
-const clearButton=document.getElementById("clearButton");
-
-const widthInput=document.getElementById("widthInput");
-const gapInput=document.getElementById("gapInput");
-const marginInput=document.getElementById("marginInput");
-
-const deleteModeMessage=document.getElementById("deleteModeMessage");
-
-let db=null;
-let images=[];
-let deleteMode=false;
+const APP_SHELL = [
+  './',
+  './index.html',
+  './manifest.json',
+  './icon.png',
+  './icon-512.png',
+  './icon-192.png',
+  './favicon.png',
+  './style.css',
+  './script.js'
+];
 
 
 /* =========================
-   IndexedDB
+   インストール
 ========================= */
 
-function openDatabase(){
+self.addEventListener('install', event => {
 
- return new Promise((resolve,reject)=>{
+  event.waitUntil(
 
-  const r=indexedDB.open(
-   DB_NAME,
-   DB_VERSION
+    caches.open(CACHE_NAME)
+      .then(cache => cache.addAll(APP_SHELL))
+      .then(() => self.skipWaiting())
+
   );
 
-  r.onupgradeneeded=e=>{
-
-   const d=e.target.result;
-
-   if(!d.objectStoreNames.contains(STORE_NAME)){
-
-    d.createObjectStore(
-     STORE_NAME,
-     {
-      keyPath:"id",
-      autoIncrement:true
-     }
-    );
-
-   }
-
-  };
-
-  r.onsuccess=e=>{
-
-   db=e.target.result;
-
-   resolve(db);
-
-  };
-
-  r.onerror=e=>{
-
-   reject(e.target.error);
-
-  };
-
- });
-
-}
-
-
-function getAllImages(){
-
- return new Promise((resolve,reject)=>{
-
-  const r=
-   db
-   .transaction(
-    STORE_NAME,
-    "readonly"
-   )
-   .objectStore(STORE_NAME)
-   .getAll();
-
-  r.onsuccess=()=>{
-
-   const a=r.result||[];
-
-   a.sort(
-    (x,y)=>
-     (
-      typeof x.order==="number"
-       ?x.order
-       :x.id
-     )
-     -
-     (
-      typeof y.order==="number"
-       ?y.order
-       :y.id
-     )
-   );
-
-   resolve(a);
-
-  };
-
-  r.onerror=e=>{
-
-   reject(e.target.error);
-
-  };
-
- });
-
-}
+});
 
 
 /* =========================
-   画像比率
+   有効化
 ========================= */
 
-function getImageRatio(blob){
+self.addEventListener('activate', event => {
 
- return new Promise((resolve,reject)=>{
+  event.waitUntil(
 
-  const url=
-   URL.createObjectURL(blob);
+    caches.keys()
+      .then(keys => {
 
-  const img=
-   new Image();
+        return Promise.all(
 
-  img.onload=()=>{
+          keys
+            .filter(
+              key =>
+                key.startsWith('oshi-screenshot-printer-') &&
+                key !== CACHE_NAME
+            )
+            .map(
+              key =>
+                caches.delete(key)
+            )
 
-   const ratio=
-    img.naturalWidth/
-    img.naturalHeight;
+        );
 
-   URL.revokeObjectURL(url);
+      })
+      .then(() => self.clients.claim())
 
-   resolve(ratio);
-
-  };
-
-  img.onerror=()=>{
-
-   URL.revokeObjectURL(url);
-
-   reject(
-    new Error(
-     "画像を読み込めませんでした"
-    )
-   );
-
-  };
-
-  img.src=url;
-
- });
-
-}
-
-
-/* =========================
-   画像保存
-========================= */
-
-async function saveImage(blob,name){
-
- const ratio=
-  await getImageRatio(blob);
-
- /*
-   横長 → 90°
-   縦長 → 0°
- */
- const rotation=
-  ratio>1
-   ?90
-   :0;
-
- return new Promise(
-  (resolve,reject)=>{
-
-   const store=
-    db
-    .transaction(
-     STORE_NAME,
-     "readwrite"
-    )
-    .objectStore(
-     STORE_NAME
-    );
-
-   const request=
-    store.add({
-
-     blob:blob,
-
-     name:name,
-
-     created:Date.now(),
-
-     order:
-      Date.now()+
-      Math.random(),
-
-     rotation:rotation
-
-    });
-
-   request.onsuccess=()=>{
-
-    resolve(
-     request.result
-    );
-
-   };
-
-   request.onerror=e=>{
-
-    reject(
-     e.target.error
-    );
-
-   };
-
-  }
- );
-
-}
-
-
-/* =========================
-   画像更新
-========================= */
-
-function putImage(image){
-
- return new Promise(
-  (resolve,reject)=>{
-
-   const transaction=
-    db.transaction(
-     STORE_NAME,
-     "readwrite"
-    );
-
-   transaction
-    .objectStore(
-     STORE_NAME
-    )
-    .put(image);
-
-   transaction.oncomplete=
-    resolve;
-
-   transaction.onerror=e=>{
-
-    reject(
-     e.target.error
-    );
-
-   };
-
-  }
- );
-
-}
-
-
-/* =========================
-   画像削除
-========================= */
-
-function deleteImage(id){
-
- return new Promise(
-  (resolve,reject)=>{
-
-   const transaction=
-    db.transaction(
-     STORE_NAME,
-     "readwrite"
-    );
-
-   const request=
-    transaction
-    .objectStore(
-     STORE_NAME
-    )
-    .delete(id);
-
-   request.onsuccess=
-    resolve;
-
-   request.onerror=e=>{
-
-    reject(
-     e.target.error
-    );
-
-   };
-
-  }
- );
-
-}
-
-
-/* =========================
-   全削除
-========================= */
-
-function clearDatabase(){
-
- return new Promise(
-  (resolve,reject)=>{
-
-   const transaction=
-    db.transaction(
-     STORE_NAME,
-     "readwrite"
-    );
-
-   const request=
-    transaction
-    .objectStore(
-     STORE_NAME
-    )
-    .clear();
-
-   request.onsuccess=
-    resolve;
-
-   request.onerror=e=>{
-
-    reject(
-     e.target.error
-    );
-
-   };
-
-  }
- );
-
-}
-
-
-/* =========================
-   並び順保存
-========================= */
-
-function saveOrder(){
-
- return new Promise(
-  (resolve,reject)=>{
-
-   const transaction=
-    db.transaction(
-     STORE_NAME,
-     "readwrite"
-    );
-
-   const store=
-    transaction.objectStore(
-     STORE_NAME
-    );
-
-   images.forEach(
-    (image,index)=>{
-
-     image.order=index;
-
-     store.put(image);
-
-    }
-   );
-
-   transaction.oncomplete=
-    resolve;
-
-   transaction.onerror=e=>{
-
-    reject(
-     e.target.error
-    );
-
-   };
-
-  }
- );
-
-}
-
-
-/* =========================
-   スマホ表示用縮小
-========================= */
-
-function fitPagesToScreen(){
-
- const wraps=
-  preview.querySelectorAll(
-   ".page-wrap"
   );
 
- if(!wraps.length){
+});
 
-  return;
 
- }
+/* =========================
+   通信
+========================= */
 
- const available=
-  Math.max(
-   1,
-   preview.clientWidth-40
-  );
+self.addEventListener('fetch', event => {
 
- wraps.forEach(
-  wrap=>{
+  const request = event.request;
 
-   const page=
-    wrap.querySelector(
-     ".page"
-    );
-
-   if(!page){
+  if(request.method !== 'GET'){
 
     return;
-
-   }
-
-   page.style.transform=
-    "scale(1)";
-
-   const pageWidth=
-    page.offsetWidth;
-
-   const pageHeight=
-    page.offsetHeight;
-
-   const scale=
-    Math.min(
-     1,
-     available/pageWidth
-    );
-
-   page.style.transform=
-    `scale(${scale})`;
-
-   wrap.style.width=
-    `${pageWidth*scale}px`;
-
-   wrap.style.height=
-    `${pageHeight*scale}px`;
-
-  }
- );
-
-}
-
-
-/* =========================
-   比率準備
-========================= */
-
-async function prepareRatios(){
-
- const jobs=
-  images.map(
-   async image=>{
-
-    if(!image._ratio){
-
-     image._ratio=
-      await getImageRatio(
-       image.blob
-      );
-
-    }
-
-    return image;
-
-   }
-  );
-
- await Promise.all(
-  jobs
- );
-
-}
-
-
-/* =========================
-   A4レイアウト
-========================= */
-
-async function buildLayout(){
-
- if(!images.length){
-
-  preview.innerHTML=
-   '<div class="empty">' +
-   '📷 画像を追加すると、ここにA4レイアウトが表示されます' +
-   '</div>';
-
-  info.textContent="";
-
-  return;
-
- }
-
- await prepareRatios();
-
- const width=
-  Math.max(
-   1,
-   parseFloat(
-    widthInput.value
-   )||4.5
-  )*10;
-
- const gap=
-  Math.max(
-   0,
-   parseFloat(
-    gapInput.value
-   )||0.3
-  )*10;
-
- const margin=
-  Math.max(
-   0,
-   parseFloat(
-    marginInput.value
-   )||0.5
-  )*10;
-
- const usableHeight=
-  A4_HEIGHT-
-  margin*2;
-
- const pages=[];
-
- let pageItems=[];
-
- let x=margin;
- let y=margin;
-
- for(
-  const image of images
- ){
-
-  /*
-    画像の元比率から
-    「回転前」のサイズを作る。
-  */
-
-let boxWidth;
-let boxHeight;
-
-
-/*
-  最終的なA4上で
-  「短辺」を4.5cmにする。
-
-  縦長画像：
-  短辺 = width
-
-  横長画像を90°回転：
-  回転後の短辺 = width
-*/
-
-if(
- image.rotation===90 ||
- image.rotation===270
-){
-
-  // 横長画像を90°回転
-  // 回転後：縦が元画像の横長側
-  boxWidth=
-    width;
-
-  boxHeight=
-    width*image._ratio;
-
-}else{
-
-  // 縦長・正方形
-  boxWidth=
-    width;
-
-  boxHeight=
-    width/image._ratio;
-
-}
-
-
-  /*
-    下に入らなければ次の列
-  */
-
-  if(
-   y>margin &&
-   y+boxHeight>
-    A4_HEIGHT-margin
-  ){
-
-   x+=
-    width+
-    gap;
-
-   y=margin;
 
   }
 
 
   /*
-    右端まで来たら次ページ
+    HTMLは必ずネットワーク優先。
+
+    新しいindex.htmlがあれば
+    それをそのまま返す。
   */
 
   if(
-   x+boxWidth>
-    A4_WIDTH-margin
+    request.mode === 'navigate' ||
+    request.destination === 'document'
   ){
 
-   if(pageItems.length){
+    event.respondWith(
 
-    pages.push(
-     pageItems
+      fetch(request, {
+        cache: 'no-store'
+      })
+
+      .then(response => {
+
+        const copy =
+          response.clone();
+
+        caches.open(CACHE_NAME)
+          .then(cache => {
+
+            cache.put(
+              './index.html',
+              copy
+            );
+
+          });
+
+        return response;
+
+      })
+
+      .catch(() => {
+
+        return caches.match(
+          './index.html'
+        );
+
+      })
+
     );
 
-   }
-
-   pageItems=[];
-
-   x=margin;
-
-   y=margin;
+    return;
 
   }
 
 
   /*
-    A4に入りきらない場合
+    CSS / JS / 画像など
   */
 
-  if(
-   boxHeight>
-    usableHeight
-  ){
+  event.respondWith(
 
-   const scale=
-    usableHeight/
-    boxHeight;
+    caches.match(request)
 
-   boxHeight=
-    usableHeight;
+      .then(cached => {
 
-   boxWidth=
-    boxWidth*
-    scale;
+        if(cached){
 
-  }
+          return cached;
+
+        }
 
 
-  pageItems.push({
+        return fetch(request)
 
-   image:image,
+          .then(response => {
 
-   left:x,
+            if(
+              response &&
+              response.ok
+            ){
 
-   top:y,
+              const copy =
+                response.clone();
 
-   width:boxWidth,
+              caches.open(CACHE_NAME)
+                .then(cache => {
 
-   height:boxHeight
+                  cache.put(
+                    request,
+                    copy
+                  );
 
-  });
+                });
 
+            }
 
-  y+=
-   boxHeight+
-   gap;
+            return response;
 
- }
+          });
 
+      })
 
- if(pageItems.length){
-
-  pages.push(
-   pageItems
   );
 
- }
-
-
- renderPages(
-  pages
- );
-
-}
-
-
-/* =========================
-   A4ページ描画
-========================= */
-
-function renderPages(pages){
-
- preview.innerHTML="";
-
- pages.forEach(
-  items=>{
-
-   const wrap=
-    document.createElement(
-     "div"
-    );
-
-   wrap.className=
-    "page-wrap";
-
-
-   const page=
-    document.createElement(
-     "div"
-    );
-
-   page.className=
-    "page";
-
-
-   items.forEach(
-    data=>{
-
-     const image=
-      data.image;
-
-
-     /* =========================
-        外側のA4上の枠
-     ========================= */
-
-     const item=
-      document.createElement(
-       "div"
-      );
-
-     item.className=
-      "item";
-
-     item.draggable=
-      !deleteMode;
-
-     item.style.left=
-      `${data.left}mm`;
-
-     item.style.top=
-      `${data.top}mm`;
-
-     item.style.width=
-      `${data.width}mm`;
-
-     item.style.height=
-      `${data.height}mm`;
-
-
-     /* =========================
-        画像用の回転フレーム
-     =========================
-
-        ここが今回の修正ポイント。
-
-        img自体は回転させない。
-
-        90°の場合、
-
-        frame
-        ┌────────┐
-        │  img   │
-        │        │
-        └────────┘
-
-        を90°回転させる。
-
-        これによってスマホでも
-        画像の縦横比を維持しやすくする。
-     */
-
-     const frame=
-      document.createElement(
-       "div"
-      );
-
-     frame.className=
-      "image-frame";
-
-
-     const rotated=
-      image.rotation===90 ||
-      image.rotation===270;
-
-
-     /*
-       frameは「回転する前」の
-       サイズにする。
-
-       回転後はitemの
-       width / heightと一致する。
-     */
-
-     if(rotated){
-
-      frame.style.width=
-       `${data.height}mm`;
-
-      frame.style.height=
-       `${data.width}mm`;
-
-     }else{
-
-      frame.style.width=
-       `${data.width}mm`;
-
-      frame.style.height=
-       `${data.height}mm`;
-
-     }
-
-
-     frame.style.position=
-      "absolute";
-
-     frame.style.left=
-      "50%";
-
-     frame.style.top=
-      "50%";
-
-     frame.style.transformOrigin=
-      "center center";
-
-
-     frame.style.transform=
-      `translate(-50%,-50%) rotate(${image.rotation||0}deg)`;
-
-
-     frame.style.overflow=
-      "hidden";
-
-
-     /* =========================
-        画像本体
-     ========================= */
-
-     const img=
-      document.createElement(
-       "img"
-      );
-
-
-     const url=
-      URL.createObjectURL(
-       image.blob
-      );
-
-
-     img.src=url;
-
-     img.alt=
-      image.name||
-      "画像";
-
-
-     /*
-       画像はframeいっぱいに入れる。
-
-       object-fit:contain によって
-       元画像の縦横比を維持する。
-     */
-
-     img.style.display=
-      "block";
-
-     img.style.width=
-      "100%";
-
-     img.style.height=
-      "100%";
-
-     img.style.objectFit=
-      "contain";
-
-     img.style.pointerEvents=
-      "none";
-
-
-     /*
-       画像の読み込みが終わったら
-       URLを解放する。
-     */
-
-     img.onload=()=>{
-
-      URL.revokeObjectURL(url);
-
-     };
-
-     img.onerror=()=>{
-
-      URL.revokeObjectURL(url);
-
-     };
-
-
-     frame.appendChild(
-      img
-     );
-
-     item.appendChild(
-      frame
-     );
-
-
-     /* =========================
-        回転ボタン
-     ========================= */
-
-     const rotateButton=
-      document.createElement(
-       "button"
-      );
-
-     rotateButton.className=
-      "rotate-button";
-
-     rotateButton.type=
-      "button";
-
-     rotateButton.textContent=
-      "↻";
-
-     rotateButton.title=
-      `回転：${image.rotation||0}°`;
-
-
-     rotateButton.onclick=
-      async event=>{
-
-       event.preventDefault();
-
-       event.stopPropagation();
-
-
-       if(deleteMode){
-
-        return;
-
-       }
-
-
-       image.rotation=
-        image.rotation===90
-         ?0
-         :90;
-
-
-       try{
-
-        await putImage(
-         image
-        );
-
-
-        saveStatus.textContent=
-         "✓ 回転を保存しました";
-
-
-        await buildLayout();
-
-
-       }catch(error){
-
-        console.error(
-         error
-        );
-
-
-        saveStatus.textContent=
-         "⚠ 回転の保存に失敗しました";
-
-       }
-
-      };
-
-
-     /* =========================
-        削除モード
-     ========================= */
-
-     if(deleteMode){
-
-      const deleteMark=
-       document.createElement(
-        "div"
-       );
-
-      deleteMark.className=
-       "delete-mark";
-
-      deleteMark.textContent=
-       "×";
-
-      item.appendChild(
-       deleteMark
-      );
-
-     }
-
-
-     /* =========================
-        削除
-     ========================= */
-
-     item.onclick=
-      async event=>{
-
-       if(
-        event.target===
-         rotateButton ||
-        !deleteMode
-       ){
-
-        return;
-
-       }
-
-
-       try{
-
-        await deleteImage(
-         image.id
-        );
-
-
-        images=
-         images.filter(
-          item=>
-           item.id!==image.id
-         );
-
-
-        await saveOrder();
-
-
-        saveStatus.textContent=
-         "✓ 画像を削除しました";
-
-
-        await buildLayout();
-
-
-       }catch(error){
-
-        console.error(
-         error
-        );
-
-
-        saveStatus.textContent=
-         "⚠ 削除に失敗しました";
-
-       }
-
-      };
-
-
-     item.appendChild(
-      rotateButton
-     );
-
-
-     setupDrag(
-      item,
-      image
-     );
-
-
-     page.appendChild(
-      item
-     );
-
-    }
-   );
-
-
-   wrap.appendChild(
-    page
-   );
-
-
-   preview.appendChild(
-    wrap
-   );
-
-  }
- );
-
-
- fitPagesToScreen();
-
-
- info.textContent=
-  `${images.length}枚 / A4 ${pages.length}ページ`;
-
-}
-
-
-/* =========================
-   並び替え
-========================= */
-
-function setupDrag(
- item,
- target
-){
-
- item.ondragstart=
-  event=>{
-
-   if(deleteMode){
-
-    event.preventDefault();
-
-    return;
-
-   }
-
-
-   event.dataTransfer.effectAllowed=
-    "move";
-
-
-   event.dataTransfer.setData(
-    "text/plain",
-    String(
-     target.id
-    )
-   );
-
-  };
-
-
- item.ondragover=
-  event=>{
-
-   if(deleteMode){
-
-    return;
-
-   }
-
-
-   event.preventDefault();
-
-
-   item.classList.add(
-    "drag-over"
-   );
-
-  };
-
-
- item.ondragleave=
-  ()=>{
-
-   item.classList.remove(
-    "drag-over"
-   );
-
-  };
-
-
- item.ondrop=
-  async event=>{
-
-   if(deleteMode){
-
-    return;
-
-   }
-
-
-   event.preventDefault();
-
-
-   item.classList.remove(
-    "drag-over"
-   );
-
-
-   const id=
-    Number(
-     event.dataTransfer.getData(
-      "text/plain"
-     )
-    );
-
-
-   if(
-    !id ||
-    id===target.id
-   ){
-
-    return;
-
-   }
-
-
-   const from=
-    images.findIndex(
-     image=>
-      image.id===id
-    );
-
-
-   const to=
-    images.findIndex(
-     image=>
-      image.id===target.id
-    );
-
-
-   if(
-    from<0 ||
-    to<0
-   ){
-
-    return;
-
-   }
-
-
-   const moved=
-    images.splice(
-     from,
-     1
-    )[0];
-
-
-   images.splice(
-    to,
-    0,
-    moved
-   );
-
-
-   await saveOrder();
-
-
-   saveStatus.textContent=
-    "✓ 並び順を保存しました";
-
-
-   await buildLayout();
-
-  };
-
-}
-
-
-/* =========================
-   画像追加
-========================= */
-
-fileInput.onchange=
- async event=>{
-
-  const files=
-   Array.from(
-    event.target.files||[]
-   ).filter(
-    file=>
-     file.type.startsWith(
-      "image/"
-     )
-   );
-
-
-  if(!files.length){
-
-   return;
-
-  }
-
-
-  saveStatus.textContent=
-   `画像を保存しています… 0 / ${files.length}`;
-
-
-  try{
-
-   for(
-    let i=0;
-    i<files.length;
-    i++
-   ){
-
-    await saveImage(
-     files[i],
-     files[i].name
-    );
-
-
-    saveStatus.textContent=
-     `画像を保存しています… ${i+1} / ${files.length}`;
-
-   }
-
-
-   fileInput.value="";
-
-
-   images=
-    await getAllImages();
-
-
-   saveStatus.textContent=
-    `✓ ${files.length}枚追加しました`;
-
-
-   await buildLayout();
-
-
-  }catch(error){
-
-   console.error(
-    error
-   );
-
-
-   saveStatus.textContent=
-    "⚠ 画像の保存に失敗しました";
-
-  }
-
-};
-
-
-/* =========================
-   削除モード
-========================= */
-
-deleteModeButton.onclick=
- async()=>{
-
-  deleteMode=
-   !deleteMode;
-
-
-  document.body.classList.toggle(
-   "delete-mode",
-   deleteMode
-  );
-
-
-  deleteModeButton.classList.toggle(
-   "active",
-   deleteMode
-  );
-
-
-  deleteModeButton.textContent=
-   deleteMode
-    ?"🗑️ 削除モード終了"
-    :"🗑️ 削除モード";
-
-
-  deleteModeMessage.classList.toggle(
-   "show",
-   deleteMode
-  );
-
-
-  await buildLayout();
-
-};
-
-
-/* =========================
-   全削除
-========================= */
-
-clearButton.onclick=
- async()=>{
-
-  if(!images.length){
-
-   return;
-
-  }
-
-
-  const answer=
-   prompt(
-    '全部削除する場合は「削除」と入力してください'
-   );
-
-
-  if(
-   answer!=="削除"
-  ){
-
-   return;
-
-  }
-
-
-  try{
-
-   await clearDatabase();
-
-
-   images=[];
-
-
-   saveStatus.textContent=
-    "✓ すべて削除しました";
-
-
-   await buildLayout();
-
-
-  }catch(error){
-
-   console.error(
-    error
-   );
-
-
-   saveStatus.textContent=
-    "⚠ 削除に失敗しました";
-
-  }
-
-};
-
-
-/* =========================
-   設定変更
-========================= */
-
-[
- widthInput,
- gapInput,
- marginInput
-].forEach(
- element=>{
-
-  element.addEventListener(
-   "change",
-   ()=>{
-    buildLayout();
-   }
-  );
-
- }
-);
-
-
-/* =========================
-   印刷
-========================= */
-
-pdfButton.onclick=
- async()=>{
-
-  if(!images.length){
-
-   alert(
-    "まず画像を追加してください"
-   );
-
-   return;
-
-  }
-
-
-  if(deleteMode){
-
-   deleteMode=false;
-
-
-   document.body.classList.remove(
-    "delete-mode"
-   );
-
-
-   deleteModeButton.classList.remove(
-    "active"
-   );
-
-
-   deleteModeButton.textContent=
-    "🗑️ 削除モード";
-
-
-   deleteModeMessage.classList.remove(
-    "show"
-   );
-
-  }
-
-
-  await buildLayout();
-
-
-  setTimeout(
-   ()=>{
-    window.print();
-   },
-   300
-  );
-
-};
-
-
-/* =========================
-   画面サイズ変更
-========================= */
-
-window.addEventListener(
- "resize",
- fitPagesToScreen
-);
-
-
-/* =========================
-   起動
-========================= */
-
-(async()=>{
-
- try{
-
-  await openDatabase();
-
-
-  images=
-   await getAllImages();
-
-
-  images.forEach(
-   image=>{
-
-    if(
-     typeof image.rotation!=="number"
-    ){
-
-     image.rotation=0;
-
-    }
-
-   }
-  );
-
-
-  await buildLayout();
-
-
- }catch(error){
-
-  console.error(
-   error
-  );
-
-
-  info.textContent=
-   "データベースを開けませんでした。";
-
- }
-
-})();
+});
