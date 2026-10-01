@@ -13,7 +13,7 @@
 
 body {
   margin: 0;
-  background: #f5f1ef;
+  background: #f7f3f1;
   color: #4d403b;
   font-family:
     -apple-system,
@@ -24,14 +24,12 @@ body {
     sans-serif;
 }
 
-/* =========================
-   ヘッダー
-========================= */
+/* ヘッダー */
 
 header {
   background: #8f675b;
   color: white;
-  padding: 18px 24px;
+  padding: 20px;
 }
 
 header h1 {
@@ -40,21 +38,17 @@ header h1 {
 }
 
 header p {
-  margin: 5px 0 0;
+  margin: 6px 0 0;
   font-size: 13px;
-  opacity: 0.9;
 }
 
-/* =========================
-   操作エリア
-========================= */
+/* 操作ボタン */
 
 .controls {
   padding: 18px;
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-  align-items: center;
 }
 
 button,
@@ -64,47 +58,28 @@ button,
   padding: 11px 16px;
   font-size: 14px;
   cursor: pointer;
+}
+
+.file-label {
   background: #8f675b;
   color: white;
 }
 
-button:hover,
-.file-label:hover {
-  opacity: 0.85;
+button {
+  background: #d8c1b8;
+  color: #4d403b;
 }
 
-.file-label {
-  display: inline-block;
+button:hover,
+.file-label:hover {
+  opacity: 0.8;
 }
 
 input[type="file"] {
   display: none;
 }
 
-.settings {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 14px;
-  padding: 0 18px 15px;
-  font-size: 14px;
-}
-
-.settings label {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.settings input {
-  width: 70px;
-  padding: 6px 8px;
-  border: 1px solid #d8cbc6;
-  border-radius: 7px;
-}
-
-/* =========================
-   情報
-========================= */
+/* 情報 */
 
 .info {
   padding: 0 18px 15px;
@@ -112,99 +87,100 @@ input[type="file"] {
   color: #786862;
 }
 
-/* =========================
-   プレビュー
-========================= */
+/* 画像一覧 */
 
-#preview {
-  padding: 20px;
+#imageList {
+  padding: 0 18px 30px;
+
+  display: grid;
+
+  grid-template-columns:
+    repeat(auto-fill, minmax(180px, 1fr));
+
+  gap: 16px;
 }
 
-.page {
+/* 画像カード */
+
+.image-card {
   position: relative;
-
-  /* A4横 */
-  width: 297mm;
-  height: 210mm;
-
-  margin: 0 auto 30px;
 
   background: white;
 
+  border-radius: 14px;
+
+  padding: 10px;
+
   box-shadow:
-    0 4px 20px rgba(0,0,0,0.12);
-
-  overflow: hidden;
+    0 3px 12px rgba(0, 0, 0, 0.08);
 }
 
-/* =========================
-   画像
-========================= */
+/* スクショ */
 
-.item {
-  position: absolute;
-  overflow: hidden;
-}
-
-.item img {
+.image-card img {
   display: block;
+
   width: 100%;
-  height: 100%;
+
+  max-height: 300px;
+
   object-fit: contain;
+
+  border-radius: 8px;
 }
 
-/* =========================
-   印刷
-========================= */
+/* 削除ボタン */
 
-@media print {
+.delete-button {
+  position: absolute;
 
-  body {
-    background: white;
-  }
+  top: 6px;
+  right: 6px;
 
-  header,
-  .controls,
-  .settings,
-  .info {
-    display: none !important;
-  }
+  width: 32px;
+  height: 32px;
 
-  #preview {
-    padding: 0;
-  }
+  padding: 0;
 
-  .page {
-    margin: 0;
-    box-shadow: none;
+  border-radius: 50%;
 
-    page-break-after: always;
-  }
+  background: rgba(80, 60, 55, 0.85);
 
-  .page:last-child {
-    page-break-after: auto;
-  }
+  color: white;
 
-  @page {
-    size: A4 landscape;
-    margin: 0;
-  }
+  font-size: 18px;
+
+  line-height: 32px;
+
+  text-align: center;
 }
 
-/* =========================
-   スマホ・小さい画面
-========================= */
+.delete-button:hover {
+  background: #8f675b;
+}
 
-@media screen and (max-width: 1000px) {
+/* 番号 */
 
-  .page {
-    transform-origin: top left;
-    transform: scale(0.7);
+.image-number {
+  margin-top: 7px;
 
-    margin-bottom: -60mm;
-    margin-left: 0;
-  }
+  text-align: center;
 
+  font-size: 12px;
+
+  color: #8a7770;
+}
+
+/* 空っぽ */
+
+.empty {
+  grid-column: 1 / -1;
+
+  text-align: center;
+
+  padding: 60px 20px;
+
+  color: #a08f89;
 }
 </style>
 </head>
@@ -213,517 +189,251 @@ input[type="file"] {
 
 <header>
   <h1>推しスクショ A4プリンター</h1>
-  <p>スクショを選んで、A4に自動で敷き詰めよう♡</p>
+  <p>まずはスクショを集めるところから♡</p>
 </header>
+
 
 <div class="controls">
 
   <!-- 画像追加 -->
+
   <label class="file-label">
+
     📷 スクショを追加
+
     <input
       id="fileInput"
       type="file"
       accept="image/*"
       multiple
     >
+
   </label>
 
-  <!-- 配置 -->
-  <button id="layoutButton">
-    🖼️ A4に敷き詰める
-  </button>
-
-  <!-- 印刷 -->
-  <button id="printButton">
-    🖨️ 印刷する
-  </button>
 
   <!-- 全削除 -->
+
   <button id="clearButton">
-    🗑️ 全部消す
+    🗑️ 全部削除
   </button>
 
 </div>
 
-<div class="settings">
-
-  <label>
-    基本の高さ
-    <input
-      id="heightInput"
-      type="number"
-      value="4.5"
-      min="1"
-      max="10"
-      step="0.1"
-    >
-    cm
-  </label>
-
-  <label>
-    画像のすき間
-    <input
-      id="gapInput"
-      type="number"
-      value="0.3"
-      min="0"
-      max="3"
-      step="0.1"
-    >
-    cm
-  </label>
-
-  <label>
-    A4の余白
-    <input
-      id="marginInput"
-      type="number"
-      value="0.5"
-      min="0"
-      max="3"
-      step="0.1"
-    >
-    cm
-  </label>
-
-</div>
 
 <div class="info" id="info">
-  まだ画像がありません
+  画像はまだありません
 </div>
 
-<div id="preview"></div>
+
+<div id="imageList">
+
+  <div class="empty">
+    📷<br>
+    「スクショを追加」から画像を選んでね
+  </div>
+
+</div>
 
 
 <script>
 
-/* =========================================================
-   データ
-========================================================= */
+/* =====================================================
+   画像データ
+===================================================== */
 
 let images = [];
 
 
-/* =========================================================
-   DOM
-========================================================= */
+/* =====================================================
+   要素
+===================================================== */
 
 const fileInput =
   document.getElementById("fileInput");
 
-const layoutButton =
-  document.getElementById("layoutButton");
-
-const printButton =
-  document.getElementById("printButton");
-
-const clearButton =
-  document.getElementById("clearButton");
-
-const preview =
-  document.getElementById("preview");
+const imageList =
+  document.getElementById("imageList");
 
 const info =
   document.getElementById("info");
 
-const heightInput =
-  document.getElementById("heightInput");
-
-const gapInput =
-  document.getElementById("gapInput");
-
-const marginInput =
-  document.getElementById("marginInput");
+const clearButton =
+  document.getElementById("clearButton");
 
 
-/* =========================================================
+/* =====================================================
    画像追加
-========================================================= */
+===================================================== */
 
-fileInput.addEventListener("change", function(event) {
+fileInput.addEventListener(
+  "change",
+  function(event) {
 
-  const files = Array.from(event.target.files);
+    const files =
+      Array.from(event.target.files);
 
-  if (!files.length) {
-    return;
-  }
 
-  let loaded = 0;
-
-  files.forEach(function(file) {
-
-    if (!file.type.startsWith("image/")) {
-      loaded++;
+    if (files.length === 0) {
       return;
     }
 
-    const reader = new FileReader();
 
-    reader.onload = function(e) {
+    files.forEach(function(file) {
 
-      const img = new Image();
+      if (!file.type.startsWith("image/")) {
+        return;
+      }
 
-      img.onload = function() {
 
-        images.push({
-          src: e.target.result,
-          width: img.naturalWidth,
-          height: img.naturalHeight
-        });
+      const reader =
+        new FileReader();
 
-        loaded++;
 
-        updateInfo();
+      reader.onload =
+        function(e) {
 
-        /*
-         * 画像を追加したら自動的に
-         * A4へ配置
-         */
-        buildLayout();
+          images.push({
+            src: e.target.result
+          });
 
-      };
 
-      img.src = e.target.result;
+          renderImages();
 
-    };
+        };
 
-    reader.readAsDataURL(file);
 
-  });
+      reader.readAsDataURL(file);
 
-  /*
-   * 同じ画像をもう一度選べるようにする
-   */
-  fileInput.value = "";
-
-});
-
-
-/* =========================================================
-   情報表示
-========================================================= */
-
-function updateInfo() {
-
-  if (images.length === 0) {
-
-    info.textContent =
-      "まだ画像がありません";
-
-    return;
-  }
-
-  info.textContent =
-    images.length +
-    "枚の画像を読み込み中・配置済み";
-}
-
-
-/* =========================================================
-   A4配置
-========================================================= */
-
-function buildLayout() {
-
-  if (images.length === 0) {
-
-    preview.innerHTML = "";
-
-    updateInfo();
-
-    return;
-  }
-
-  /*
-   * A4横
-   *
-   * 幅 297mm
-   * 高さ 210mm
-   */
-
-  const A4_WIDTH = 297;
-  const A4_HEIGHT = 210;
-
-  /*
-   * cm → mm
-   */
-
-  const targetHeight =
-    Number(heightInput.value) * 10;
-
-  const gap =
-    Number(gapInput.value) * 10;
-
-  const margin =
-    Number(marginInput.value) * 10;
-
-
-  /*
-   * 実際に使える範囲
-   */
-
-  const usableWidth =
-    A4_WIDTH - margin * 2;
-
-  const usableHeight =
-    A4_HEIGHT - margin * 2;
-
-
-  /*
-   * ページを作る
-   */
-
-  const pages = [];
-
-  let currentPage = [];
-
-  let x = margin;
-
-  let y = margin;
-
-  let rowHeight = 0;
-
-
-  /*
-   * 画像を選んだ順番に配置
-   */
-
-  images.forEach(function(image) {
-
-    /*
-     * 元画像の縦横比
-     */
-
-    const ratio =
-      image.width / image.height;
-
-
-    /*
-     * 基本の高さ
-     *
-     * 例：
-     * 高さ45mmなら
-     * 横幅は元画像の比率で決定
-     */
-
-    let h = targetHeight;
-
-    let w = h * ratio;
-
-
-    /*
-     * 横幅がA4の使用可能幅より
-     * 大きい場合だけ縮小
-     *
-     * それ以外は高さ4.5cmを維持
-     */
-
-    if (w > usableWidth) {
-
-      w = usableWidth;
-      h = w / ratio;
-
-    }
-
-
-    /*
-     * 今の段に入らないなら
-     * 次の段へ
-     */
-
-    if (
-      x !== margin &&
-      x + w > A4_WIDTH - margin
-    ) {
-
-      x = margin;
-
-      y += rowHeight + gap;
-
-      rowHeight = 0;
-
-    }
-
-
-    /*
-     * 縦方向に入らないなら
-     * 次のページへ
-     */
-
-    if (
-      y + h > A4_HEIGHT - margin
-    ) {
-
-      pages.push(currentPage);
-
-      currentPage = [];
-
-      x = margin;
-      y = margin;
-      rowHeight = 0;
-
-    }
-
-
-    /*
-     * 配置情報
-     */
-
-    currentPage.push({
-      src: image.src,
-      x: x,
-      y: y,
-      width: w,
-      height: h
     });
 
 
     /*
-     * 次の位置
+     * 同じ画像をもう一度選択できるようにする
      */
 
-    x += w + gap;
+    fileInput.value = "";
 
-    rowHeight =
-      Math.max(rowHeight, h);
-
-  });
+  }
+);
 
 
-  /*
-   * 最後のページを追加
-   */
+/* =====================================================
+   画像一覧を表示
+===================================================== */
 
-  if (currentPage.length > 0) {
+function renderImages() {
 
-    pages.push(currentPage);
+  imageList.innerHTML = "";
+
+
+  /* 画像がない場合 */
+
+  if (images.length === 0) {
+
+    imageList.innerHTML = `
+      <div class="empty">
+        📷<br>
+        「スクショを追加」から画像を選んでね
+      </div>
+    `;
+
+    info.textContent =
+      "画像はまだありません";
+
+    return;
 
   }
 
 
-  /*
-   * 表示を作る
-   */
+  /* 件数 */
 
-  renderPages(pages);
-
-}
+  info.textContent =
+    images.length + "枚の画像";
 
 
-/* =========================================================
-   ページ描画
-========================================================= */
+  /* 画像を順番に表示 */
 
-function renderPages(pages) {
+  images.forEach(
+    function(image, index) {
 
-  preview.innerHTML = "";
-
-
-  pages.forEach(function(pageItems, pageIndex) {
-
-    const page =
-      document.createElement("div");
-
-    page.className = "page";
-
-
-    pageItems.forEach(function(item) {
-
-      const box =
+      const card =
         document.createElement("div");
 
-      box.className = "item";
+      card.className =
+        "image-card";
 
 
-      /*
-       * mm → CSSでそのまま指定
-       */
-
-      box.style.left =
-        item.x + "mm";
-
-      box.style.top =
-        item.y + "mm";
-
-      box.style.width =
-        item.width + "mm";
-
-      box.style.height =
-        item.height + "mm";
-
+      /* 画像 */
 
       const img =
         document.createElement("img");
 
-      img.src = item.src;
+      img.src =
+        image.src;
 
 
-      box.appendChild(img);
+      /* 削除ボタン */
 
-      page.appendChild(box);
+      const deleteButton =
+        document.createElement("button");
 
-    });
+      deleteButton.className =
+        "delete-button";
+
+      deleteButton.textContent =
+        "×";
 
 
-    preview.appendChild(page);
+      deleteButton.title =
+        "この画像を削除";
 
-  });
+
+      /*
+       * この画像だけ削除
+       */
+
+      deleteButton.addEventListener(
+        "click",
+        function() {
+
+          images.splice(index, 1);
+
+          renderImages();
+
+        }
+      );
 
 
-  info.textContent =
-    images.length +
-    "枚 / " +
-    pages.length +
-    "ページ";
+      /* 番号 */
+
+      const number =
+        document.createElement("div");
+
+      number.className =
+        "image-number";
+
+      number.textContent =
+        (index + 1) + "枚目";
+
+
+      card.appendChild(img);
+
+      card.appendChild(deleteButton);
+
+      card.appendChild(number);
+
+
+      imageList.appendChild(card);
+
+    }
+  );
 
 }
 
 
-/* =========================================================
-   A4に敷き詰めるボタン
-========================================================= */
-
-layoutButton.addEventListener(
-  "click",
-  function() {
-
-    buildLayout();
-
-  }
-);
-
-
-/* =========================================================
-   印刷
-========================================================= */
-
-printButton.addEventListener(
-  "click",
-  function() {
-
-    if (images.length === 0) {
-
-      alert("先に画像を追加してね！");
-
-      return;
-    }
-
-    buildLayout();
-
-    setTimeout(function() {
-
-      window.print();
-
-    }, 200);
-
-  }
-);
-
-
-/* =========================================================
+/* =====================================================
    全削除
-========================================================= */
+===================================================== */
 
 clearButton.addEventListener(
   "click",
@@ -734,52 +444,31 @@ clearButton.addEventListener(
     }
 
 
-    const ok =
+    const result =
       confirm(
-        "読み込んだ画像を全部消しますか？"
+        "全部の画像を削除する？"
       );
 
 
-    if (!ok) {
+    if (!result) {
       return;
     }
 
 
     images = [];
 
-    preview.innerHTML = "";
 
-    updateInfo();
+    renderImages();
 
   }
 );
 
 
-/* =========================================================
-   設定変更時
-========================================================= */
+/* =====================================================
+   初期表示
+===================================================== */
 
-heightInput.addEventListener(
-  "change",
-  buildLayout
-);
-
-gapInput.addEventListener(
-  "change",
-  buildLayout
-);
-
-marginInput.addEventListener(
-  "change",
-  buildLayout
-);
-
-
-/* =========================================================
-   初期状態
-========================================================= */
-
-updateInfo();
+renderImages();
 
 </script>
 
