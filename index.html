@@ -21,7 +21,7 @@ input[type=file]{display:none}
 .info{padding:4px 14px 12px;font-size:12px;color:#806d66}
 .pages{padding:0 10px 30px}.pageWrap{margin:0 auto 24px;max-width:850px}
 .pageTitle{font-size:13px;margin:0 0 7px 4px;font-weight:600}
-.page{position:relative;background:white;width:100%;aspect-ratio:210/297;box-shadow:0 3px 15px #0002;overflow:hidden}
+.page{position:relative;background:white;width:100%;aspect-ratio:297/210;box-shadow:0 3px 15px #0002;overflow:hidden}
 .item{position:absolute;overflow:hidden;background:#eee}.item img{width:100%;height:100%;display:block}
 .empty{padding:40px 20px;text-align:center;color:#a08e87;font-size:14px}
 .note{padding:0 14px 20px;font-size:12px;color:#806d66;line-height:1.7}
@@ -29,8 +29,8 @@ input[type=file]{display:none}
 @media print{
  body{background:white}
  header,.controls,.settings,.info,.note,#status,.pageTitle{display:none!important}
- .pages{padding:0}.pageWrap{margin:0;width:210mm;height:297mm;max-width:none;page-break-after:always}
- .page{width:210mm;height:297mm;box-shadow:none}
+ .pages{padding:0}.pageWrap{margin:0;width:297mm;height:210mm;max-width:none;page-break-after:always}
+ .page{width:297mm;height:210mm;box-shadow:none}
 }
 
 .cropModal{position:fixed;inset:0;background:#0009;z-index:20;display:none;align-items:center;justify-content:center;padding:16px}
@@ -46,12 +46,16 @@ input[type=file]{display:none}
 .cropTools{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.cropTools button{flex:1;min-width:100px}
 .cropHint{font-size:11px;color:#806d66;margin-top:8px}
 
+
+.item{touch-action:manipulation}
+.item .editBadge{position:absolute;right:3px;bottom:3px;background:#9a7165;color:#fff;border-radius:8px;padding:2px 5px;font-size:9px;opacity:.9;z-index:2}
+
 </style>
 </head>
 <body>
 <header>
 <h1>推しスクショ A4プリンター</h1>
-<div class="sub">比率そのまま・自動配置・高画質PDF ♡</div>
+<div class="sub">A4横・8×4.5cmを目標に自動配置・切り取り・高画質PDF ♡</div>
 </header>
 
 <div class="controls">
@@ -63,6 +67,8 @@ input[type=file]{display:none}
 </div>
 
 <div class="settings">
+<label>目標サイズ 横 <input id="targetW" type="number" min="1" max="30" step="0.1" value="8"> cm</label>
+<label>縦 <input id="targetH" type="number" min="1" max="30" step="0.1" value="4.5"> cm</label>
 <label>画像間隔 <input id="gap" type="number" min="0" max="20" value="3"> mm</label>
 <label>ページ余白 <input id="margin" type="number" min="0" max="20" value="5"> mm</label>
 <label>並び方
@@ -72,12 +78,13 @@ input[type=file]{display:none}
 <option value="tall">縦長を優先</option>
 </select>
 </label>
+<label><input id="autoRotate" type="checkbox" checked> 自動回転</label>
 </div>
 
-<div class="info" id="info">まだ画像がありません　｜　配置後の画像をタップすると切り取りできます</div>
+<div class="info" id="info">まだ画像がありません　｜　スクショは何回でも追加できます。配置後の画像をタップすると切り取りできます</div>
 <div id="status"></div>
 <div class="pages" id="pages">
-<div class="empty">スクショを選んでね<br>何枚でもOK。A4を超えたら自動で2枚目へ送ります。</div>
+<div class="empty">スクショを選んでね<br>何枚でもOK。A4横を超えたら自動で2枚目へ送ります。</div>
 </div>
 <div class="note">
 <b>PDFについて</b><br>
@@ -102,17 +109,18 @@ let cropTarget=null,cropDraft=null,cropPointer=null;
 
 $("files").addEventListener("change",e=>{
   const files=[...e.target.files];
-  imgs=[];
-  files.forEach((f,i)=>{
+  const start=imgs.length;
+  files.forEach((f,j)=>{
     const u=URL.createObjectURL(f);
     const im=new Image();
     im.onload=()=>{
-      imgs.push({src:u,w:im.naturalWidth,h:im.naturalHeight,ratio:im.naturalWidth/im.naturalHeight,name:f.name,idx:i,file:f});
-      imgs.sort((a,b)=>a.idx-b.idx);
+      imgs.push({src:u,w:im.naturalWidth,h:im.naturalHeight,ratio:im.naturalWidth/im.naturalHeight,
+        name:f.name,idx:start+j,file:f,rotate:0,crop:null});
       render();
     };
     im.src=u;
   });
+  e.target.value="";
 });
 ["gap","margin","order"].forEach(id=>$(id).addEventListener("change",render));
 $("auto").addEventListener("click",render);
@@ -164,20 +172,90 @@ function layoutPage(list,W=210,H=297,margin=5,gap=3){
 }
 
 function buildLayouts(){
-  const gap=Number($("gap").value)||0,margin=Number($("margin").value)||0;
-  let pool=sorted(),pages=[],guard=0;
-  while(pool.length&&guard++<100){
-    const r=layoutPage(pool,210,297,margin,gap);
-    if(!r.placed.length)break;
-    pages.push(r.placed);pool=pool.slice(r.next);
+  const gap=Number($("gap").value)||0, margin=Number($("margin").value)||0;
+  const targetW=(Number($("targetW").value)||8)*10;
+  const targetH=(Number($("targetH").value)||4.5)*10;
+  const autoRotate=$("autoRotate").checked;
+  let pool=sorted(), pages=[], guard=0;
+
+  // A4 landscape: 297 x 210 mm.
+  const W=297,H=210, usableW=W-margin*2, usableH=H-margin*2;
+
+  while(pool.length && guard++<200){
+    let remaining=[...pool], placed=[], y=margin;
+
+    // Build rows whose images aim for the target physical size.
+    while(remaining.length){
+      const remH=usableH-(y-margin);
+      if(remH<=1) break;
+
+      let best=null;
+      // Try row counts up to 6; choose the layout whose height is closest to targetH
+      // while fitting the available width/height.
+      for(let count=1;count<=Math.min(6,remaining.length);count++){
+        const row=remaining.slice(0,count);
+        let options=[false];
+        if(autoRotate) options=[false,true];
+
+        // Try all rotation combinations for small rows.
+        const combos=[];
+        function gen(k,arr){
+          if(k===row.length){combos.push([...arr]);return}
+          arr.push(false);gen(k+1,arr);arr.pop();
+          if(autoRotate){arr.push(true);gen(k+1,arr);arr.pop();}
+        }
+        gen(0,[]);
+
+        for(const rot of combos){
+          let ratios=row.map((it,i)=>{
+            const base=it.crop ? it.crop.w/it.crop.h : it.ratio;
+            return rot[i] ? 1/base : base;
+          });
+          const sumR=ratios.reduce((a,b)=>a+b,0);
+          const maxH=(usableW-gap*(count-1))/sumR;
+          const h=Math.min(targetH,remH,maxH);
+          if(h<=0)continue;
+          const width=sumR*h;
+          const targetArea=count*targetW*targetH;
+          const area=count*(targetW*targetH);
+          const score=Math.abs(h-targetH)/targetH + Math.max(0,(width-usableW)/usableW)*10;
+          if(!best || score<best.score){
+            best={row,rot,ratios,h,width,score};
+          }
+        }
+      }
+
+      if(!best)break;
+      let x=margin;
+      best.row.forEach((it,k)=>{
+        const ratio=best.ratios[k];
+        const w=ratio*best.h;
+        placed.push({...it,x,y,w,h:best.h,rotate:best.rot[k]?90:(it.rotate||0)});
+        x+=w+gap;
+      });
+      remaining=remaining.slice(best.row.length);
+      y+=best.h+gap;
+    }
+
+    if(!placed.length){
+      // Never reject an image: force one image into the next page.
+      const it=remaining[0];
+      const ratio=it.crop ? it.crop.w/it.crop.h : it.ratio;
+      const h=Math.min(usableH,usableW/ratio);
+      placed=[{...it,x:margin,y:margin,w:ratio*h,h,rotate:it.rotate||0}];
+      remaining=remaining.slice(1);
+    }
+
+    pages.push(placed);
+    const placedKeys=new Set(placed.map(x=>x.idx));
+    pool=pool.filter(x=>!placedKeys.has(x.idx));
   }
   return pages;
 }
-
 function render(){
   const root=$("pages");root.innerHTML="";
   if(!imgs.length){
-    root.innerHTML='<div class="empty">スクショを選んでね<br>何枚でもOK。A4を超えたら自動で2枚目へ送ります。</div>';
+    root.innerHTML='<div class="empty">スクショを選んでね<br>何枚でもOK。A4横を超えたら自動で2枚目へ送ります。</div>';
     $("info").textContent="まだ画像がありません";return;
   }
   const pages=buildLayouts();
@@ -187,11 +265,27 @@ function render(){
     const page=document.createElement("div");page.className="page";
     items.forEach(it=>{
       const d=document.createElement("div");d.className="item";
-      d.style.left=it.x/210*100+"%";d.style.top=it.y/297*100+"%";
-      d.style.width=it.w/210*100+"%";d.style.height=it.h/297*100+"%";
+      d.style.left=it.x/297*100+"%";d.style.top=it.y/210*100+"%";
+      d.style.width=it.w/297*100+"%";d.style.height=it.h/210*100+"%";
       const im=document.createElement("img");im.src=it.src;im.alt=it.name;
-      if(it.crop){const c=it.crop;im.style.maxWidth="none";im.style.maxHeight="none";im.style.position="absolute";im.style.width=(100/c.w)+"%";im.style.height=(100/c.h)+"%";im.style.left=(-c.x/c.w*100)+"%";im.style.top=(-c.y/c.h*100)+"%";}
-      d.appendChild(im);d.title="タップして切り取り";d.addEventListener("click",()=>openCrop(it));
+      if(it.crop){
+        const c=it.crop;
+        im.style.maxWidth="none";im.style.maxHeight="none";im.style.position="absolute";
+        im.style.width=(100/c.w)+"%";im.style.height=(100/c.h)+"%";
+        im.style.left=(-c.x/c.w*100)+"%";im.style.top=(-c.y/c.h*100)+"%";
+      }
+      if(it.rotate===90){
+        im.style.transform="rotate(90deg)";
+        // Keep the rotated image centered.
+        im.style.width=(it.crop ? 100/it.crop.w : 100)+"%";
+        im.style.height=(it.crop ? 100/it.crop.h : 100)+"%";
+        im.style.left="50%";im.style.top="50%";im.style.transformOrigin="center";
+        im.style.translate="-50% -50%";
+      }
+      d.appendChild(im);
+      const badge=document.createElement("span");badge.className="editBadge";badge.textContent="✂︎";
+      d.appendChild(badge);
+      d.title="タップして切り取り";d.addEventListener("click",()=>openCrop(it));
       page.appendChild(d);
     });
     wrap.appendChild(page);root.appendChild(wrap);
@@ -305,18 +399,24 @@ async function createPDF(pages){
 
     let content="";
     imgsForPage.forEach((im,n)=>{
-      const c=im.crop;
-      const x=im.it.x*72/25.4,y=(297-im.it.y-im.it.h)*72/25.4;
+      const c=im.crop||{x:0,y:0,w:1,h:1};
+      const x=im.it.x*72/25.4,y=(210-im.it.y-im.it.h)*72/25.4;
       const w=im.it.w*72/25.4,h=im.it.h*72/25.4;
       const sw=im.w*c.w,sh=im.h*c.h;
       const a=w/sw,d=h/sh,e=x-a*(im.w*c.x),f=y+h+d*(im.h*c.y);
-      content+=`q ${w.toFixed(4)} 0 0 ${h.toFixed(4)} ${x.toFixed(4)} ${y.toFixed(4)} re W n ${a.toFixed(6)} 0 0 ${d.toFixed(6)} ${e.toFixed(4)} ${f.toFixed(4)} cm /Im${n} Do Q\\n`;
+      if(im.it.rotate===90){
+        // Rotate around the center of the destination rectangle.
+        const cx=x+w/2,cy=y+h/2;
+        content+=`q ${w.toFixed(4)} 0 0 ${h.toFixed(4)} ${x.toFixed(4)} ${y.toFixed(4)} re W n 0 1 -1 0 ${cx.toFixed(4)} ${cy.toFixed(4)} cm ${a.toFixed(6)} 0 0 ${d.toFixed(6)} ${e.toFixed(4)} ${f.toFixed(4)} cm /Im${n} Do Q\\n`;
+      }else{
+        content+=`q ${w.toFixed(4)} 0 0 ${h.toFixed(4)} ${x.toFixed(4)} ${y.toFixed(4)} re W n ${a.toFixed(6)} 0 0 ${d.toFixed(6)} ${e.toFixed(4)} ${f.toFixed(4)} cm /Im${n} Do Q\\n`;
+      }
     });
     const contentId=add(concat([
       bytes(`<< /Length ${bytes(content).length} >>\nstream\n`),bytes(content),bytes("endstream")
     ]));
     const resources="<< /XObject << "+imgsForPage.map((x,n)=>`/Im${n} ${x.id} 0 R`).join(" ")+" >> >>";
-    const pageId=add(bytes(`<< /Type /Page /Parent ${pagesId} 0 R /MediaBox [0 0 595.2756 841.8898] /Resources ${resources} /Contents ${contentId} 0 R >>`));
+    const pageId=add(bytes(`<< /Type /Page /Parent ${pagesId} 0 R /MediaBox [0 0 841.8898 595.2756] /Resources ${resources} /Contents ${contentId} 0 R >>`));
     imageObjs.push(pageId);
   }
 
