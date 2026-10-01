@@ -19,8 +19,15 @@ input[type=file]{display:none}
 .page{position:absolute;left:0;top:0;width:210mm;height:297mm;transform-origin:top left;background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.12);overflow:hidden}
 .item{position:absolute;background:#fff;cursor:grab;user-select:none}.item:active{cursor:grabbing}.item.drag-over{outline:3px solid #9a7165;outline-offset:2px}
 
+.image-frame{
+ position:absolute;
+ overflow:hidden;
+ transform-origin:center center;
+}
 .item img{
  display:block;
+ width:100%;
+ height:100%;
  object-fit:contain;
  pointer-events:none
 }
