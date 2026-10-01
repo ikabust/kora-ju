@@ -33,18 +33,6 @@ input[type=file]{display:none}
  .page{width:297mm;height:210mm;box-shadow:none}
 }
 
-.cropModal{position:fixed;inset:0;background:#0009;z-index:20;display:none;align-items:center;justify-content:center;padding:16px}
-.cropModal.show{display:flex}
-.cropBox{width:min(94vw,700px);background:#fff;border-radius:18px;padding:14px;box-shadow:0 8px 35px #0005}
-.cropTitle{font-weight:700;margin:0 0 10px}
-.cropStage{position:relative;width:100%;height:min(62vh,560px);background:#222;overflow:hidden;border-radius:10px;display:flex;align-items:center;justify-content:center;touch-action:none}
-.cropStage img{display:block;max-width:100%;max-height:100%;user-select:none;-webkit-user-drag:none}
-.cropRect{position:absolute;border:2px solid #fff;box-shadow:0 0 0 9999px rgba(0,0,0,.48);cursor:move;touch-action:none}
-.cropHandle{position:absolute;width:18px;height:18px;background:#fff;border:2px solid #9a7165;border-radius:50%}
-.cropHandle.tl{left:-9px;top:-9px}.cropHandle.tr{right:-9px;top:-9px}
-.cropHandle.bl{left:-9px;bottom:-9px}.cropHandle.br{right:-9px;bottom:-9px}
-.cropTools{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.cropTools button{flex:1;min-width:100px}
-.cropHint{font-size:11px;color:#806d66;margin-top:8px}
 
 
 .item{touch-action:manipulation}
@@ -55,7 +43,7 @@ input[type=file]{display:none}
 <body>
 <header>
 <h1>推しスクショ A4プリンター</h1>
-<div class="sub">A4横・8×4.5cmを目標に自動配置・切り取り・高画質PDF ♡</div>
+<div class="sub">A4横・高さ4.5cmを基準に左から順番に配置・高画質PDF ♡</div>
 </header>
 
 <div class="controls">
@@ -67,24 +55,21 @@ input[type=file]{display:none}
 </div>
 
 <div class="settings">
-<label>目標サイズ 横 <input id="targetW" type="number" min="1" max="30" step="0.1" value="8"> cm</label>
-<label>縦 <input id="targetH" type="number" min="1" max="30" step="0.1" value="4.5"> cm</label>
+<label>基本の高さ <input id="targetH" type="number" min="1" max="15" step="0.1" value="4.5"> cm</label>
 <label>画像間隔 <input id="gap" type="number" min="0" max="20" value="3"> mm</label>
 <label>ページ余白 <input id="margin" type="number" min="0" max="20" value="5"> mm</label>
-<label>並び方
-<select id="order">
-<option value="original">選択した順</option>
-<option value="size">大きい順</option>
-<option value="tall">縦長を優先</option>
+<label>向き
+<select id="orientation">
+<option value="none">元の向き</option>
+<option value="rotate">90°回転</option>
 </select>
 </label>
-<label><input id="autoRotate" type="checkbox" checked> 自動回転</label>
 </div>
 
-<div class="info" id="info">まだ画像がありません　｜　スクショは何回でも追加できます。配置後の画像をタップすると切り取りできます</div>
+<div class="info" id="info">まだ画像がありません　｜　スクショは何回でも追加できます。長押しで順番を入れ替えられます</div>
 <div id="status"></div>
 <div class="pages" id="pages">
-<div class="empty">スクショを選んでね<br>何枚でもOK。A4横を超えたら自動で2枚目へ送ります。</div>
+<div class="empty">スクショを選んでね<br>何枚でもOK。右端にはみ出す画像は次の段へ。A4横に入りきらなければ次ページへ送ります。</div>
 </div>
 <div class="note">
 <b>PDFについて</b><br>
@@ -94,10 +79,6 @@ input[type=file]{display:none}
 </div>
 
 
-<div class="cropModal" id="cropModal">
-<div class="cropBox">
-<div class="cropTitle">画像を切り取り</div>
-<div class="cropStage" id="cropStage"><img id="cropImg" alt=""><div class="cropRect" id="cropRect"><i class="cropHandle tl"></i><i class="cropHandle tr"></i><i class="cropHandle bl"></i><i class="cropHandle br"></i></div></div>
 <div class="cropTools"><button id="cropReset">元に戻す</button><button id="cropCancel">キャンセル</button><button class="primary" id="cropApply">切り取りを適用</button></div>
 <div class="cropHint">四隅を動かして範囲を変更。枠の中をドラッグすると位置を移動できます。</div>
 </div></div>
@@ -139,123 +120,58 @@ function sorted(){
 }
 
 /* A4: 210 x 297 mm. Shelf packing; every image retains its original ratio. */
-function layoutPage(list,W=210,H=297,margin=5,gap=3){
-  const usableW=W-margin*2,usableH=H-margin*2;
-  let placed=[],y=margin,i=0;
-  while(i<list.length){
-    const remaining=usableH-(y-margin);
-    if(remaining<=1)break;
-    let chosen=null;
-    for(let count=1;count<=list.length-i;count++){
-      const rs=list.slice(i,i+count);
-      const sumR=rs.reduce((s,x)=>s+x.ratio,0);
-      const t=Math.min((usableW-gap*(count-1))/sumR,remaining);
-      if(t>0){
-        if(t<12)break;
-        chosen={rs,t};
-      }
-    }
-    if(!chosen){
-      const x=list[i];
-      const t=Math.min(usableW/x.ratio,remaining);
-      chosen={rs:[x],t};
-    }
-    let x=margin;
-    chosen.rs.forEach(item=>{
-      const w=item.ratio*chosen.t;
-      placed.push({...item,x,y,w,h:chosen.t});
-      x+=w+gap;
-    });
-    y+=chosen.t+gap;i+=chosen.rs.length;
-  }
-  return {placed,next:i};
-}
-
 function buildLayouts(){
-  const gap=Number($("gap").value)||0, margin=Number($("margin").value)||0;
-  const targetW=(Number($("targetW").value)||8)*10;
+  const gap=(Number($("gap").value)||0), margin=(Number($("margin").value)||0);
   const targetH=(Number($("targetH").value)||4.5)*10;
-  const autoRotate=$("autoRotate").checked;
+  const W=297,H=210, usableW=W-margin*2, usableH=H-margin*2;
+  const forceRotate=$("orientation").value==="rotate";
   let pool=sorted(), pages=[], guard=0;
 
-  // A4 landscape: 297 x 210 mm.
-  const W=297,H=210, usableW=W-margin*2, usableH=H-margin*2;
+  while(pool.length && guard++<300){
+    let page=[], row=[], x=margin, y=margin, rowH=targetH;
+    while(pool.length){
+      const it=pool[0];
+      const ratio=it.ratio;
+      const rotate=forceRotate;
+      const displayRatio=rotate ? 1/ratio : ratio;
+      const iw=targetH*displayRatio;
+      const ih=targetH;
 
-  while(pool.length && guard++<200){
-    let remaining=[...pool], placed=[], y=margin;
-
-    // Build rows whose images aim for the target physical size.
-    while(remaining.length){
-      const remH=usableH-(y-margin);
-      if(remH<=1) break;
-
-      let best=null;
-      // Try row counts up to 6; choose the layout whose height is closest to targetH
-      // while fitting the available width/height.
-      for(let count=1;count<=Math.min(6,remaining.length);count++){
-        const row=remaining.slice(0,count);
-        let options=[false];
-        if(autoRotate) options=[false,true];
-
-        // Try all rotation combinations for small rows.
-        const combos=[];
-        function gen(k,arr){
-          if(k===row.length){combos.push([...arr]);return}
-          arr.push(false);gen(k+1,arr);arr.pop();
-          if(autoRotate){arr.push(true);gen(k+1,arr);arr.pop();}
-        }
-        gen(0,[]);
-
-        for(const rot of combos){
-          let ratios=row.map((it,i)=>{
-            const base=it.crop ? it.crop.w/it.crop.h : it.ratio;
-            return rot[i] ? 1/base : base;
-          });
-          const sumR=ratios.reduce((a,b)=>a+b,0);
-          const maxH=(usableW-gap*(count-1))/sumR;
-          const h=Math.min(targetH,remH,maxH);
-          if(h<=0)continue;
-          const width=sumR*h;
-          const targetArea=count*targetW*targetH;
-          const area=count*(targetW*targetH);
-          const score=Math.abs(h-targetH)/targetH + Math.max(0,(width-usableW)/usableW)*10;
-          if(!best || score<best.score){
-            best={row,rot,ratios,h,width,score};
-          }
-        }
+      // If this image doesn't fit in the current row, start a new row.
+      if(row.length && x+iw > W-margin+0.001){
+        y += rowH + gap;
+        x = margin;
+        row = [];
+        rowH = targetH;
       }
 
-      if(!best)break;
-      let x=margin;
-      best.row.forEach((it,k)=>{
-        const ratio=best.ratios[k];
-        const w=ratio*best.h;
-        placed.push({...it,x,y,w,h:best.h,rotate:best.rot[k]?90:(it.rotate||0)});
-        x+=w+gap;
-      });
-      remaining=remaining.slice(best.row.length);
-      y+=best.h+gap;
+      // If it doesn't fit vertically, move to the next page.
+      if(y+ih > H-margin+0.001){
+        break;
+      }
+
+      pool.shift();
+      const placed={...it,x,y,w:iw,h:ih,rotate:rotate?90:0};
+      page.push(placed); row.push(placed); x+=iw+gap;
     }
 
-    if(!placed.length){
-      // Never reject an image: force one image into the next page.
-      const it=remaining[0];
-      const ratio=it.crop ? it.crop.w/it.crop.h : it.ratio;
-      const h=Math.min(usableH,usableW/ratio);
-      placed=[{...it,x:margin,y:margin,w:ratio*h,h,rotate:it.rotate||0}];
-      remaining=remaining.slice(1);
+    // Never shrink tiny. If a single image is wider than A4, scale only to fit width.
+    if(!page.length){
+      const it=pool.shift();
+      const ratio=it.ratio;
+      const iw=Math.min(targetH*ratio,usableW);
+      const ih=iw/ratio;
+      page=[{...it,x:margin,y:margin,w:iw,h:ih,rotate:0}];
     }
 
-    pages.push(placed);
-    const placedKeys=new Set(placed.map(x=>x.idx));
-    pool=pool.filter(x=>!placedKeys.has(x.idx));
+    pages.push(page);
   }
   return pages;
 }
 function render(){
   const root=$("pages");root.innerHTML="";
   if(!imgs.length){
-    root.innerHTML='<div class="empty">スクショを選んでね<br>何枚でもOK。A4横を超えたら自動で2枚目へ送ります。</div>';
+    root.innerHTML='<div class="empty">スクショを選んでね<br>何枚でもOK。右端にはみ出す画像は次の段へ。A4横に入りきらなければ次ページへ送ります。</div>';
     $("info").textContent="まだ画像がありません";return;
   }
   const pages=buildLayouts();
@@ -267,25 +183,18 @@ function render(){
       const d=document.createElement("div");d.className="item";
       d.style.left=it.x/297*100+"%";d.style.top=it.y/210*100+"%";
       d.style.width=it.w/297*100+"%";d.style.height=it.h/210*100+"%";
+      d.draggable=true;
       const im=document.createElement("img");im.src=it.src;im.alt=it.name;
-      if(it.crop){
-        const c=it.crop;
-        im.style.maxWidth="none";im.style.maxHeight="none";im.style.position="absolute";
-        im.style.width=(100/c.w)+"%";im.style.height=(100/c.h)+"%";
-        im.style.left=(-c.x/c.w*100)+"%";im.style.top=(-c.y/c.h*100)+"%";
-      }
-      if(it.rotate===90){
-        im.style.transform="rotate(90deg)";
-        // Keep the rotated image centered.
-        im.style.width=(it.crop ? 100/it.crop.w : 100)+"%";
-        im.style.height=(it.crop ? 100/it.crop.h : 100)+"%";
-        im.style.left="50%";im.style.top="50%";im.style.transformOrigin="center";
-        im.style.translate="-50% -50%";
-      }
+      if(it.rotate===90){im.style.transform="rotate(90deg)";im.style.width="100%";im.style.height="100%";im.style.objectFit="contain";}
       d.appendChild(im);
-      const badge=document.createElement("span");badge.className="editBadge";badge.textContent="✂︎";
-      d.appendChild(badge);
-      d.title="タップして切り取り";d.addEventListener("click",()=>openCrop(it));
+      d.title="長押しして順番を変更";
+      d.addEventListener("contextmenu",e=>e.preventDefault());
+      let pressTimer=null;
+      d.addEventListener("pointerdown",e=>{
+        pressTimer=setTimeout(()=>{d.classList.add("selected");startReorder(it)},500);
+      });
+      d.addEventListener("pointerup",()=>clearTimeout(pressTimer));
+      d.addEventListener("pointercancel",()=>clearTimeout(pressTimer));
       page.appendChild(d);
     });
     wrap.appendChild(page);root.appendChild(wrap);
@@ -294,52 +203,6 @@ function render(){
 }
 
 
-function openCrop(item){
- cropTarget=item; cropImg.onload=()=>{const r=item.crop||{x:0,y:0,w:1,h:1};cropDraft={...r};updateCropEditor();cropModal.classList.add("show")};cropImg.src=item.src;
-}
-function updateCropEditor(){if(!cropDraft)return;cropRect.style.left=(cropDraft.x*100)+"%";cropRect.style.top=(cropDraft.y*100)+"%";cropRect.style.width=(cropDraft.w*100)+"%";cropRect.style.height=(cropDraft.h*100)+"%";}
-$("cropReset").onclick=()=>{cropDraft={x:0,y:0,w:1,h:1};updateCropEditor()};
-$("cropCancel").onclick=()=>{cropModal.classList.remove("show");cropTarget=null};
-$("cropApply").onclick=()=>{if(cropTarget){const r=cropDraft;if(r.x===0&&r.y===0&&r.w===1&&r.h===1)delete cropTarget.crop;else cropTarget.crop={...r};}cropModal.classList.remove("show");cropTarget=null;render()};
-
-function ppos(e){const r=cropStage.getBoundingClientRect();return{x:(e.clientX-r.left)/r.width,y:(e.clientY-r.top)/r.height}}
-cropRect.addEventListener("pointerdown",e=>{if(e.target.classList.contains("cropHandle"))return;e.preventDefault();cropRect.setPointerCapture(e.pointerId);const p=ppos(e);cropPointer={mode:"move",sx:p.x,sy:p.y,o:{...cropDraft}}});
-cropRect.addEventListener("pointermove",e=>{if(!cropPointer||cropPointer.mode!=="move")return;const p=ppos(e),o=cropPointer.o;let x=Math.max(0,Math.min(1-o.w,o.x+p.x-cropPointer.sx)),y=Math.max(0,Math.min(1-o.h,o.y+p.y-cropPointer.sy));cropDraft={...o,x,y};updateCropEditor()});
-cropRect.addEventListener("pointerup",()=>cropPointer=null);
-document.querySelectorAll(".cropHandle").forEach(h=>{
- h.addEventListener("pointerdown",e=>{e.preventDefault();e.stopPropagation();h.setPointerCapture(e.pointerId);const p=ppos(e);cropPointer={mode:h.className.split(" ")[1],sx:p.x,sy:p.y,o:{...cropDraft}}});
- h.addEventListener("pointermove",e=>{if(!cropPointer||cropPointer.mode==="move")return;const p=ppos(e),o=cropPointer.o,m=cropPointer.mode,min=.03;let x=o.x,y=o.y,w=o.w,hg=o.h;
-  if(m==="tl"){x=Math.max(0,Math.min(o.x+o.w-min,p.x));y=Math.max(0,Math.min(o.y+o.h-min,p.y));w=o.x+o.w-x;hg=o.y+o.h-y}
-  if(m==="tr"){y=Math.max(0,Math.min(o.y+o.h-min,p.y));w=Math.max(min,Math.min(1-o.x,p.x)-o.x);hg=o.y+o.h-y}
-  if(m==="bl"){x=Math.max(0,Math.min(o.x+o.w-min,p.x));w=o.x+o.w-x;hg=Math.max(min,Math.min(1-o.y,p.y)-o.y)}
-  if(m==="br"){w=Math.max(min,Math.min(1-o.x,p.x)-o.x);hg=Math.max(min,Math.min(1-o.y,p.y)-o.y)}
-  cropDraft={x,y,w,h:hg};updateCropEditor()
- });
- h.addEventListener("pointerup",()=>cropPointer=null);
-});
-
-/* Minimal PDF writer.
-   Images are embedded as their original JPEG/PNG byte streams.
-   JPEG is inserted directly as DCTDecode. PNG is decoded only when needed
-   because PDF needs raw image samples for general PNG files. */
-async function makePDF(){
-  if(!imgs.length){alert("先にスクショを選んでね");return;}
-  const status=$("status");status.textContent="PDFを作成中…";
-  try{
-    const pages=buildLayouts();
-    const pdf=await createPDF(pages);
-    const blob=new Blob([pdf],{type:"application/pdf"});
-    const a=document.createElement("a");
-    a.href=URL.createObjectURL(blob);
-    a.download="推しスクショ_A4.pdf";
-    document.body.appendChild(a);a.click();a.remove();
-    setTimeout(()=>URL.revokeObjectURL(a.href),3000);
-    status.textContent="PDFを作ったよ！「推しスクショ_A4.pdf」を保存してね。";
-  }catch(e){
-    console.error(e);status.textContent="PDF作成でエラーが発生しました。";
-    alert("PDFを作れませんでした。画像形式によってはブラウザの制限があります。");
-  }
-}
 
 function esc(s){return String(s).replace(/\\/g,"\\\\").replace(/\(/g,"\\(").replace(/\)/g,"\\)");}
 function bytes(s){return new TextEncoder().encode(s);}
@@ -379,7 +242,7 @@ async function createPDF(pages){
           " /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length "+data.length+" >>\nstream\n"),
           data,bytes("\nendstream")
         ]));
-        imgsForPage.push({id,w:sz.w,h:sz.h,it,crop:it.crop||{x:0,y:0,w:1,h:1}});
+        imgsForPage.push({id,w:sz.w,h:sz.h,it});
       }else{
         // Convert non-JPEG images to PNG-free RGB JPEG at source resolution.
         // This branch is used mainly for PNG/WebP/browser formats.
@@ -393,24 +256,15 @@ async function createPDF(pages){
           " /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length "+d.length+" >>\nstream\n"),
           d,bytes("\nendstream")
         ]));
-        imgsForPage.push({id,w:sz.w,h:sz.h,it,crop:it.crop||{x:0,y:0,w:1,h:1}});
+        imgsForPage.push({id,w:sz.w,h:sz.h,it});
       }
     }
 
     let content="";
     imgsForPage.forEach((im,n)=>{
-      const c=im.crop||{x:0,y:0,w:1,h:1};
       const x=im.it.x*72/25.4,y=(210-im.it.y-im.it.h)*72/25.4;
       const w=im.it.w*72/25.4,h=im.it.h*72/25.4;
-      const sw=im.w*c.w,sh=im.h*c.h;
-      const a=w/sw,d=h/sh,e=x-a*(im.w*c.x),f=y+h+d*(im.h*c.y);
-      if(im.it.rotate===90){
-        // Rotate around the center of the destination rectangle.
-        const cx=x+w/2,cy=y+h/2;
-        content+=`q ${w.toFixed(4)} 0 0 ${h.toFixed(4)} ${x.toFixed(4)} ${y.toFixed(4)} re W n 0 1 -1 0 ${cx.toFixed(4)} ${cy.toFixed(4)} cm ${a.toFixed(6)} 0 0 ${d.toFixed(6)} ${e.toFixed(4)} ${f.toFixed(4)} cm /Im${n} Do Q\\n`;
-      }else{
-        content+=`q ${w.toFixed(4)} 0 0 ${h.toFixed(4)} ${x.toFixed(4)} ${y.toFixed(4)} re W n ${a.toFixed(6)} 0 0 ${d.toFixed(6)} ${e.toFixed(4)} ${f.toFixed(4)} cm /Im${n} Do Q\\n`;
-      }
+      content+=`q ${w.toFixed(4)} 0 0 ${h.toFixed(4)} ${x.toFixed(4)} ${y.toFixed(4)} cm /Im${n} Do Q\\n`;
     });
     const contentId=add(concat([
       bytes(`<< /Length ${bytes(content).length} >>\nstream\n`),bytes(content),bytes("endstream")
