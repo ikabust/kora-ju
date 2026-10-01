@@ -1,207 +1,1572 @@
-const DB_NAME="oshiScreenshotPrinter",DB_VERSION=4,STORE_NAME="images";
-const A4_WIDTH=210,A4_HEIGHT=297;
-const fileInput=document.getElementById("fileInput"),preview=document.getElementById("preview");
-const info=document.getElementById("info"),saveStatus=document.getElementById("saveStatus");
-const pdfButton=document.getElementById("pdfButton"),deleteModeButton=document.getElementById("deleteModeButton");
-const clearButton=document.getElementById("clearButton"),widthInput=document.getElementById("widthInput");
-const gapInput=document.getElementById("gapInput"),marginInput=document.getElementById("marginInput");
+const DB_NAME="oshiScreenshotPrinter";
+const DB_VERSION=4;
+const STORE_NAME="images";
+
+const A4_WIDTH=210;
+const A4_HEIGHT=297;
+
+const fileInput=document.getElementById("fileInput");
+const preview=document.getElementById("preview");
+const info=document.getElementById("info");
+const saveStatus=document.getElementById("saveStatus");
+
+const pdfButton=document.getElementById("pdfButton");
+const deleteModeButton=document.getElementById("deleteModeButton");
+const clearButton=document.getElementById("clearButton");
+
+const widthInput=document.getElementById("widthInput");
+const gapInput=document.getElementById("gapInput");
+const marginInput=document.getElementById("marginInput");
+
 const deleteModeMessage=document.getElementById("deleteModeMessage");
-let db=null,images=[],deleteMode=false;
 
-function openDatabase(){return new Promise((resolve,reject)=>{
- const r=indexedDB.open(DB_NAME,DB_VERSION);
- r.onupgradeneeded=e=>{const d=e.target.result;if(!d.objectStoreNames.contains(STORE_NAME))d.createObjectStore(STORE_NAME,{keyPath:"id",autoIncrement:true})};
- r.onsuccess=e=>{db=e.target.result;resolve(db)};r.onerror=e=>reject(e.target.error)
-})}
+let db=null;
+let images=[];
+let deleteMode=false;
 
-function getAllImages(){return new Promise((resolve,reject)=>{
- const r=db.transaction(STORE_NAME,"readonly").objectStore(STORE_NAME).getAll();
- r.onsuccess=()=>{const a=r.result||[];a.sort((x,y)=>(typeof x.order==="number"?x.order:x.id)-(typeof y.order==="number"?y.order:y.id));resolve(a)};
- r.onerror=e=>reject(e.target.error)
-})}
 
-function getImageRatio(blob){return new Promise((resolve,reject)=>{
- const u=URL.createObjectURL(blob),im=new Image();
- im.onload=()=>{const r=im.naturalWidth/im.naturalHeight;URL.revokeObjectURL(u);resolve(r)};
- im.onerror=()=>{URL.revokeObjectURL(u);reject(new Error("画像を読み込めませんでした"))};im.src=u
-})}
+/* =========================
+   IndexedDB
+========================= */
 
-async function saveImage(blob,name){
- const ratio=await getImageRatio(blob);
- /* 横長→90°右回転、縦長→0° */
- const rotation=ratio>1?90:0;
+function openDatabase(){
  return new Promise((resolve,reject)=>{
-  const s=db.transaction(STORE_NAME,"readwrite").objectStore(STORE_NAME);
-  const r=s.add({blob,name,created:Date.now(),order:Date.now()+Math.random(),rotation});
-  r.onsuccess=()=>resolve(r.result);r.onerror=e=>reject(e.target.error)
- })
+
+  const r=indexedDB.open(
+   DB_NAME,
+   DB_VERSION
+  );
+
+  r.onupgradeneeded=e=>{
+
+   const d=e.target.result;
+
+   if(
+    !d.objectStoreNames.contains(
+     STORE_NAME
+    )
+   ){
+
+    d.createObjectStore(
+     STORE_NAME,
+     {
+      keyPath:"id",
+      autoIncrement:true
+     }
+    );
+
+   }
+
+  };
+
+  r.onsuccess=e=>{
+   db=e.target.result;
+   resolve(db);
+  };
+
+  r.onerror=e=>{
+   reject(e.target.error);
+  };
+
+ });
 }
-function putImage(image){return new Promise((resolve,reject)=>{const t=db.transaction(STORE_NAME,"readwrite");t.objectStore(STORE_NAME).put(image);t.oncomplete=resolve;t.onerror=e=>reject(e.target.error)})}
-function deleteImage(id){return new Promise((resolve,reject)=>{const t=db.transaction(STORE_NAME,"readwrite");const r=t.objectStore(STORE_NAME).delete(id);r.onsuccess=resolve;r.onerror=e=>reject(e.target.error)})}
-function clearDatabase(){return new Promise((resolve,reject)=>{const t=db.transaction(STORE_NAME,"readwrite");const r=t.objectStore(STORE_NAME).clear();r.onsuccess=resolve;r.onerror=e=>reject(e.target.error)})}
-function saveOrder(){return new Promise((resolve,reject)=>{const t=db.transaction(STORE_NAME,"readwrite"),s=t.objectStore(STORE_NAME);images.forEach((im,i)=>{im.order=i;s.put(im)});t.oncomplete=resolve;t.onerror=e=>reject(e.target.error)})}
+
+
+function getAllImages(){
+
+ return new Promise((resolve,reject)=>{
+
+  const r=
+   db
+   .transaction(
+    STORE_NAME,
+    "readonly"
+   )
+   .objectStore(STORE_NAME)
+   .getAll();
+
+  r.onsuccess=()=>{
+
+   const a=r.result||[];
+
+   a.sort(
+    (x,y)=>
+     (
+      typeof x.order==="number"
+       ?x.order
+       :x.id
+     )
+     -
+     (
+      typeof y.order==="number"
+       ?y.order
+       :y.id
+     )
+   );
+
+   resolve(a);
+
+  };
+
+  r.onerror=e=>{
+   reject(e.target.error);
+  };
+
+ });
+
+}
+
+
+/* =========================
+   元画像の比率取得
+========================= */
+
+function getImageRatio(blob){
+
+ return new Promise((resolve,reject)=>{
+
+  const url=
+   URL.createObjectURL(blob);
+
+  const img=
+   new Image();
+
+  img.onload=()=>{
+
+   const ratio=
+    img.naturalWidth /
+    img.naturalHeight;
+
+   URL.revokeObjectURL(url);
+
+   resolve(ratio);
+
+  };
+
+  img.onerror=()=>{
+
+   URL.revokeObjectURL(url);
+
+   reject(
+    new Error(
+     "画像を読み込めませんでした"
+    )
+   );
+
+  };
+
+  img.src=url;
+
+ });
+
+}
+
+
+/* =========================
+   画像保存
+========================= */
+
+async function saveImage(
+ blob,
+ name
+){
+
+ const ratio=
+  await getImageRatio(blob);
+
+ /*
+   横長画像
+   → 自動で90°回転
+
+   縦長画像
+   → そのまま
+ */
+
+ const rotation=
+  ratio>1
+   ?90
+   :0;
+
+
+ return new Promise(
+  (resolve,reject)=>{
+
+   const store=
+    db
+    .transaction(
+     STORE_NAME,
+     "readwrite"
+    )
+    .objectStore(
+     STORE_NAME
+    );
+
+
+   const request=
+    store.add({
+
+     blob:blob,
+
+     name:name,
+
+     created:Date.now(),
+
+     order:
+      Date.now()+
+      Math.random(),
+
+     rotation:rotation
+
+    });
+
+
+   request.onsuccess=()=>{
+    resolve(
+     request.result
+    );
+   };
+
+
+   request.onerror=e=>{
+    reject(
+     e.target.error
+    );
+   };
+
+  }
+ );
+
+}
+
+
+/* =========================
+   画像更新
+========================= */
+
+function putImage(image){
+
+ return new Promise(
+  (resolve,reject)=>{
+
+   const transaction=
+    db.transaction(
+     STORE_NAME,
+     "readwrite"
+    );
+
+   transaction
+    .objectStore(
+     STORE_NAME
+    )
+    .put(image);
+
+   transaction.oncomplete=
+    resolve;
+
+   transaction.onerror=e=>{
+    reject(
+     e.target.error
+    );
+   };
+
+  }
+ );
+
+}
+
+
+/* =========================
+   画像削除
+========================= */
+
+function deleteImage(id){
+
+ return new Promise(
+  (resolve,reject)=>{
+
+   const transaction=
+    db.transaction(
+     STORE_NAME,
+     "readwrite"
+    );
+
+   const request=
+    transaction
+    .objectStore(
+     STORE_NAME
+    )
+    .delete(id);
+
+   request.onsuccess=
+    resolve;
+
+   request.onerror=e=>{
+    reject(
+     e.target.error
+    );
+   };
+
+  }
+ );
+
+}
+
+
+/* =========================
+   全削除
+========================= */
+
+function clearDatabase(){
+
+ return new Promise(
+  (resolve,reject)=>{
+
+   const transaction=
+    db.transaction(
+     STORE_NAME,
+     "readwrite"
+    );
+
+   const request=
+    transaction
+    .objectStore(
+     STORE_NAME
+    )
+    .clear();
+
+   request.onsuccess=
+    resolve;
+
+   request.onerror=e=>{
+    reject(
+     e.target.error
+    );
+   };
+
+  }
+ );
+
+}
+
+
+/* =========================
+   並び順保存
+========================= */
+
+function saveOrder(){
+
+ return new Promise(
+  (resolve,reject)=>{
+
+   const transaction=
+    db.transaction(
+     STORE_NAME,
+     "readwrite"
+    );
+
+   const store=
+    transaction
+    .objectStore(
+     STORE_NAME
+    );
+
+
+   images.forEach(
+    (image,index)=>{
+
+     image.order=index;
+
+     store.put(image);
+
+    }
+   );
+
+
+   transaction.oncomplete=
+    resolve;
+
+   transaction.onerror=e=>{
+    reject(
+     e.target.error
+    );
+   };
+
+  }
+ );
+
+}
+
+
+/* =========================
+   スマホ表示用縮小
+========================= */
 
 function fitPagesToScreen(){
- const wraps=preview.querySelectorAll(".page-wrap");if(!wraps.length)return;
- const available=Math.max(1,preview.clientWidth-40);
- wraps.forEach(w=>{
-  const p=w.querySelector(".page");if(!p)return;
-  p.style.transform="scale(1)";
-  const pw=p.offsetWidth,ph=p.offsetHeight;
-  const scale=Math.min(1,available/pw);
-  p.style.transform=`scale(${scale})`;
-  w.style.width=`${pw*scale}px`;w.style.height=`${ph*scale}px`;
- })
+
+ const wraps=
+  preview.querySelectorAll(
+   ".page-wrap"
+  );
+
+
+ if(!wraps.length){
+  return;
+ }
+
+
+ const available=
+  Math.max(
+   1,
+   preview.clientWidth-40
+  );
+
+
+ wraps.forEach(
+  wrap=>{
+
+   const page=
+    wrap.querySelector(
+     ".page"
+    );
+
+
+   if(!page){
+    return;
+   }
+
+
+   page.style.transform=
+    "scale(1)";
+
+
+   const pageWidth=
+    page.offsetWidth;
+
+   const pageHeight=
+    page.offsetHeight;
+
+
+   const scale=
+    Math.min(
+     1,
+     available/pageWidth
+    );
+
+
+   page.style.transform=
+    `scale(${scale})`;
+
+
+   wrap.style.width=
+    `${pageWidth*scale}px`;
+
+   wrap.style.height=
+    `${pageHeight*scale}px`;
+
+  }
+ );
+
 }
 
-/* 画像の縦横比を一度だけ取得してキャッシュ */
+
+/* =========================
+   比率を準備
+========================= */
+
 async function prepareRatios(){
- const jobs=images.map(async im=>{
-  if(!im._ratio)im._ratio=await getImageRatio(im.blob);
-  return im;
- });
- await Promise.all(jobs);
+
+ const jobs=
+  images.map(
+   async image=>{
+
+    if(
+     !image._ratio
+    ){
+
+     image._ratio=
+      await getImageRatio(
+       image.blob
+      );
+
+    }
+
+    return image;
+
+   }
+  );
+
+
+ await Promise.all(
+  jobs
+ );
+
 }
+
+
+/* =========================
+   A4レイアウト作成
+========================= */
 
 async function buildLayout(){
+
  if(!images.length){
-  preview.innerHTML='<div class="empty">📷 画像を追加すると、ここにA4レイアウトが表示されます</div>';
-  info.textContent="";return
+
+  preview.innerHTML=
+   '<div class="empty">' +
+   '📷 画像を追加すると、ここにA4レイアウトが表示されます' +
+   '</div>';
+
+  info.textContent="";
+
+  return;
  }
+
+
  await prepareRatios();
 
- const width=Math.max(1,parseFloat(widthInput.value)||4.5)*10;
- const gap=Math.max(0,parseFloat(gapInput.value)||0.3)*10;
- const margin=Math.max(0,parseFloat(marginInput.value)||0.5)*10;
- const usableW=A4_WIDTH-margin*2,usableH=A4_HEIGHT-margin*2;
- const pages=[];let pageItems=[],x=margin,y=margin;
 
- for(const im of images){
-  const ratio=(im.rotation===90||im.rotation===270)?1/im._ratio:im._ratio;
-  let w=width,h=w/ratio;
+ const width=
+  Math.max(
+   1,
+   parseFloat(
+    widthInput.value
+   )||4.5
+  )*10;
 
-  /* 左列から下へ。下まで来たら次の列 */
-  if(y>margin&&y+h> A4_HEIGHT-margin){x+=width+gap;y=margin}
 
-  /* 右端まで来たら次のA4 */
-  if(x+w>A4_WIDTH-margin){
-   pages.push(pageItems);pageItems=[];x=margin;y=margin;
+ const gap=
+  Math.max(
+   0,
+   parseFloat(
+    gapInput.value
+   )||0.3
+  )*10;
+
+
+ const margin=
+  Math.max(
+   0,
+   parseFloat(
+    marginInput.value
+   )||0.5
+  )*10;
+
+
+ const usableHeight=
+  A4_HEIGHT-
+  margin*2;
+
+
+ const pages=[];
+
+ let pageItems=[];
+
+ let x=margin;
+
+ let y=margin;
+
+
+ /*
+   左上から下方向へ並べる。
+
+   下まで来たら
+   次の列へ移動。
+
+   右端まで来たら
+   次のA4ページへ。
+ */
+
+ for(
+  const image of images
+ ){
+
+  /*
+    ここでは
+    「実際にA4上で表示される
+     横幅・高さ」を計算する。
+
+    元画像の比率は
+    常に image._ratio を使用。
+
+    90°の場合だけ
+    横と縦を入れ替える。
+  */
+
+
+  let displayWidth=
+   width;
+
+  let displayHeight=
+   width /
+   image._ratio;
+
+
+  if(
+   image.rotation===90 ||
+   image.rotation===270
+  ){
+
+   const originalWidth=
+    displayWidth;
+
+   displayWidth=
+    displayHeight;
+
+   displayHeight=
+    originalWidth;
+
   }
 
-  /* 高さがA4に収まらない場合だけ個別縮小 */
-  if(h>usableH){h=usableH;w=h*ratio}
 
-  pageItems.push({image:im,left:x,top:y,width:w,height:h});
-  y+=h+gap;
- }
- if(pageItems.length)pages.push(pageItems);
+  /*
+    下に入らない場合
+    次の列へ
+  */
 
- renderPages(pages);
-}
+  if(
+   y>margin &&
+   y+displayHeight>
+    A4_HEIGHT-margin
+  ){
 
-function renderPages(pages){
- preview.innerHTML="";
- pages.forEach(items=>{
-  const wrap=document.createElement("div");wrap.className="page-wrap";
-  const page=document.createElement("div");page.className="page";
+   x+=
+    width+
+    gap;
 
-  items.forEach(d=>{
-   const im=d.image,item=document.createElement("div");
-   item.className="item";item.draggable=!deleteMode;
-   item.style.left=`${d.left}mm`;item.style.top=`${d.top}mm`;
-   item.style.width=`${d.width}mm`;item.style.height=`${d.height}mm`;
+   y=margin;
 
-   const img=document.createElement("img"),url=URL.createObjectURL(im.blob);
-   img.src=url;img.alt=im.name||"画像";
-const rotated=(im.rotation||0)%180!==0;
-
-    img.style.width=
-    `${rotated ? d.height : d.width}mm`;
-
-    img.style.height=
-    `${rotated ? d.width : d.height}mm`;
-
-    img.style.position="absolute";
-    img.style.left="50%";
-    img.style.top="50%";
-
-    img.style.transformOrigin="center";
-
-    img.style.transform=
-    `translate(-50%,-50%) rotate(${im.rotation||0}deg)`;
+  }
 
 
-   const rb=document.createElement("button");rb.className="rotate-button";rb.type="button";rb.textContent="↻";
-   rb.title=`回転：${im.rotation||0}°`;
-   rb.onclick=async e=>{
-    e.preventDefault();e.stopPropagation();if(deleteMode)return;
-    im.rotation=im.rotation===90?0:90;
-    try{await putImage(im);saveStatus.textContent="✓ 回転を保存しました";await buildLayout()}catch(err){console.error(err);saveStatus.textContent="⚠ 回転の保存に失敗しました"}
-   };
+  /*
+    右端まで来たら
+    次のA4ページ
+  */
 
-   if(deleteMode){const x=document.createElement("div");x.className="delete-mark";x.textContent="×";item.appendChild(x)}
-   item.onclick=async e=>{
-    if(e.target===rb||!deleteMode)return;
-    try{await deleteImage(im.id);images=images.filter(x=>x.id!==im.id);await saveOrder();saveStatus.textContent="✓ 画像を削除しました";await buildLayout()}
-    catch(err){console.error(err);saveStatus.textContent="⚠ 削除に失敗しました"}
-   };
+  if(
+   x+displayWidth>
+    A4_WIDTH-margin
+  ){
 
-   item.appendChild(img);item.appendChild(rb);setupDrag(item,im);page.appendChild(item);
+   if(
+    pageItems.length
+   ){
+
+    pages.push(
+     pageItems
+    );
+
+   }
+
+
+   pageItems=[];
+
+   x=margin;
+
+   y=margin;
+
+  }
+
+
+  /*
+    A4より縦に長すぎる画像だけ
+    A4内に収まるよう縮小
+  */
+
+  if(
+   displayHeight>
+    usableHeight
+  ){
+
+   const scale=
+    usableHeight/
+    displayHeight;
+
+   displayHeight=
+    usableHeight;
+
+   displayWidth=
+    displayWidth*
+    scale;
+
+  }
+
+
+  pageItems.push({
+
+   image:image,
+
+   left:x,
+
+   top:y,
+
+   width:displayWidth,
+
+   height:displayHeight
+
   });
-  wrap.appendChild(page);preview.appendChild(wrap);
- });
- fitPagesToScreen();
- info.textContent=`${images.length}枚 / A4 ${pages.length}ページ`;
-}
 
-function setupDrag(item,target){
- item.ondragstart=e=>{if(deleteMode){e.preventDefault();return}e.dataTransfer.effectAllowed="move";e.dataTransfer.setData("text/plain",String(target.id))};
- item.ondragover=e=>{if(deleteMode)return;e.preventDefault();item.classList.add("drag-over")};
- item.ondragleave=()=>item.classList.remove("drag-over");
- item.ondrop=async e=>{
-  if(deleteMode)return;e.preventDefault();item.classList.remove("drag-over");
-  const id=Number(e.dataTransfer.getData("text/plain"));if(!id||id===target.id)return;
-  const from=images.findIndex(x=>x.id===id),to=images.findIndex(x=>x.id===target.id);
-  if(from<0||to<0)return;
-  const [m]=images.splice(from,1);images.splice(to,0,m);
-  await saveOrder();saveStatus.textContent="✓ 並び順を保存しました";await buildLayout();
+
+  y+=
+   displayHeight+
+   gap;
+
  }
+
+
+ if(
+  pageItems.length
+ ){
+
+  pages.push(
+   pageItems
+  );
+
+ }
+
+
+ renderPages(
+  pages
+ );
+
 }
 
-fileInput.onchange=async e=>{
- const files=Array.from(e.target.files||[]).filter(f=>f.type.startsWith("image/"));if(!files.length)return;
- saveStatus.textContent=`画像を保存しています… 0 / ${files.length}`;
- try{
-  /* まとめて順番に保存し、途中で画面再描画しない */
-  for(let i=0;i<files.length;i++){await saveImage(files[i],files[i].name);saveStatus.textContent=`画像を保存しています… ${i+1} / ${files.length}`}
-  fileInput.value="";images=await getAllImages();saveStatus.textContent=`✓ ${files.length}枚追加しました`;await buildLayout();
- }catch(err){console.error(err);saveStatus.textContent="⚠ 画像の保存に失敗しました"}
+
+/* =========================
+   A4ページ描画
+========================= */
+
+function renderPages(
+ pages
+){
+
+ preview.innerHTML="";
+
+
+ pages.forEach(
+  items=>{
+
+   const wrap=
+    document.createElement(
+     "div"
+    );
+
+   wrap.className=
+    "page-wrap";
+
+
+   const page=
+    document.createElement(
+     "div"
+    );
+
+   page.className=
+    "page";
+
+
+   items.forEach(
+    data=>{
+
+     const image=
+      data.image;
+
+
+     const item=
+      document.createElement(
+       "div"
+      );
+
+     item.className=
+      "item";
+
+
+     item.draggable=
+      !deleteMode;
+
+
+     item.style.left=
+      `${data.left}mm`;
+
+     item.style.top=
+      `${data.top}mm`;
+
+     item.style.width=
+      `${data.width}mm`;
+
+     item.style.height=
+      `${data.height}mm`;
+
+
+     /*
+       =========================
+       画像
+       =========================
+
+       ★重要★
+
+       画像の「元の縦横比」は
+       _ratio のまま。
+
+       90°回転するときは
+       回転前の画像サイズを
+       縦横入れ替えてから
+       CSSで90°回転する。
+
+       これで画像自体を
+       横に引き伸ばしたり
+       縦に潰したりしない。
+     */
+
+
+     const img=
+      document.createElement(
+       "img"
+      );
+
+
+     const url=
+      URL.createObjectURL(
+       image.blob
+      );
+
+
+     img.src=url;
+
+     img.alt=
+      image.name||
+      "画像";
+
+
+     const rotated=
+      image.rotation===90 ||
+      image.rotation===270;
+
+
+     /*
+       回転前の画像サイズ
+     */
+
+     if(rotated){
+
+      img.style.width=
+       `${data.height}mm`;
+
+      img.style.height=
+       `${data.width}mm`;
+
+     }else{
+
+      img.style.width=
+       `${data.width}mm`;
+
+      img.style.height=
+       `${data.height}mm`;
+
+     }
+
+
+     img.style.position=
+      "absolute";
+
+
+     img.style.left=
+      "50%";
+
+     img.style.top=
+      "50%";
+
+
+     img.style.transformOrigin=
+      "center";
+
+
+     img.style.transform=
+      `translate(-50%,-50%) rotate(${image.rotation||0}deg)`;
+
+
+     /*
+       =========================
+       回転ボタン
+       =========================
+     */
+
+     const rotateButton=
+      document.createElement(
+       "button"
+      );
+
+
+     rotateButton.className=
+      "rotate-button";
+
+
+     rotateButton.type=
+      "button";
+
+
+     rotateButton.textContent=
+      "↻";
+
+
+     rotateButton.title=
+      `回転：${image.rotation||0}°`;
+
+
+     rotateButton.onclick=
+      async event=>{
+
+       event.preventDefault();
+
+       event.stopPropagation();
+
+
+       if(deleteMode){
+        return;
+       }
+
+
+       /*
+         0° ⇄ 90°
+       */
+
+       image.rotation=
+        image.rotation===90
+         ?0
+         :90;
+
+
+       try{
+
+        await putImage(
+         image
+        );
+
+
+        saveStatus.textContent=
+         "✓ 回転を保存しました";
+
+
+        await buildLayout();
+
+
+       }catch(error){
+
+        console.error(
+         error
+        );
+
+
+        saveStatus.textContent=
+         "⚠ 回転の保存に失敗しました";
+
+       }
+
+      };
+
+
+     /*
+       =========================
+       削除モード
+       =========================
+     */
+
+     if(deleteMode){
+
+      const deleteMark=
+       document.createElement(
+        "div"
+       );
+
+
+      deleteMark.className=
+       "delete-mark";
+
+
+      deleteMark.textContent=
+       "×";
+
+
+      item.appendChild(
+       deleteMark
+      );
+
+     }
+
+
+     /*
+       =========================
+       削除
+       =========================
+     */
+
+     item.onclick=
+      async event=>{
+
+       if(
+        event.target===
+         rotateButton ||
+        !deleteMode
+       ){
+
+        return;
+
+       }
+
+
+       try{
+
+        await deleteImage(
+         image.id
+        );
+
+
+        images=
+         images.filter(
+          item=>
+           item.id!==image.id
+         );
+
+
+        await saveOrder();
+
+
+        saveStatus.textContent=
+         "✓ 画像を削除しました";
+
+
+        await buildLayout();
+
+
+       }catch(error){
+
+        console.error(
+         error
+        );
+
+
+        saveStatus.textContent=
+         "⚠ 削除に失敗しました";
+
+       }
+
+      };
+
+
+     item.appendChild(
+      img
+     );
+
+
+     item.appendChild(
+      rotateButton
+     );
+
+
+     setupDrag(
+      item,
+      image
+     );
+
+
+     page.appendChild(
+      item
+     );
+
+    }
+   );
+
+
+   wrap.appendChild(
+    page
+   );
+
+
+   preview.appendChild(
+    wrap
+   );
+
+  }
+ );
+
+
+ fitPagesToScreen();
+
+
+ info.textContent=
+  `${images.length}枚 / A4 ${pages.length}ページ`;
+
+}
+
+
+/* =========================
+   並び替え
+========================= */
+
+function setupDrag(
+ item,
+ target
+){
+
+ item.ondragstart=
+  event=>{
+
+   if(deleteMode){
+
+    event.preventDefault();
+
+    return;
+
+   }
+
+
+   event.dataTransfer.effectAllowed=
+    "move";
+
+
+   event.dataTransfer.setData(
+    "text/plain",
+    String(
+     target.id
+    )
+   );
+
+  };
+
+
+ item.ondragover=
+  event=>{
+
+   if(deleteMode){
+    return;
+   }
+
+
+   event.preventDefault();
+
+
+   item.classList.add(
+    "drag-over"
+   );
+
+  };
+
+
+ item.ondragleave=
+  ()=>{
+   item.classList.remove(
+    "drag-over"
+   );
+  };
+
+
+ item.ondrop=
+  async event=>{
+
+   if(deleteMode){
+    return;
+   }
+
+
+   event.preventDefault();
+
+
+   item.classList.remove(
+    "drag-over"
+   );
+
+
+   const id=
+    Number(
+     event.dataTransfer.getData(
+      "text/plain"
+     )
+    );
+
+
+   if(
+    !id ||
+    id===target.id
+   ){
+
+    return;
+
+   }
+
+
+   const from=
+    images.findIndex(
+     image=>
+      image.id===id
+    );
+
+
+   const to=
+    images.findIndex(
+     image=>
+      image.id===target.id
+    );
+
+
+   if(
+    from<0 ||
+    to<0
+   ){
+
+    return;
+
+   }
+
+
+   const moved=
+    images.splice(
+     from,
+     1
+    )[0];
+
+
+   images.splice(
+    to,
+    0,
+    moved
+   );
+
+
+   await saveOrder();
+
+
+   saveStatus.textContent=
+    "✓ 並び順を保存しました";
+
+
+   await buildLayout();
+
+  };
+
+}
+
+
+/* =========================
+   画像追加
+========================= */
+
+fileInput.onchange=
+ async event=>{
+
+  const files=
+   Array.from(
+    event.target.files||[]
+   ).filter(
+    file=>
+     file.type.startsWith(
+      "image/"
+     )
+   );
+
+
+  if(
+   !files.length
+  ){
+
+   return;
+
+  }
+
+
+  saveStatus.textContent=
+   `画像を保存しています… 0 / ${files.length}`;
+
+
+  try{
+
+   /*
+     まとめて保存。
+
+     保存途中では
+     レイアウトを再構築しない。
+   */
+
+   for(
+    let i=0;
+    i<files.length;
+    i++
+   ){
+
+    await saveImage(
+     files[i],
+     files[i].name
+    );
+
+
+    saveStatus.textContent=
+     `画像を保存しています… ${i+1} / ${files.length}`;
+
+   }
+
+
+   fileInput.value="";
+
+
+   images=
+    await getAllImages();
+
+
+   saveStatus.textContent=
+    `✓ ${files.length}枚追加しました`;
+
+
+   await buildLayout();
+
+
+  }catch(error){
+
+   console.error(
+    error
+   );
+
+
+   saveStatus.textContent=
+    "⚠ 画像の保存に失敗しました";
+
+  }
+
 };
 
-deleteModeButton.onclick=async()=>{
- deleteMode=!deleteMode;document.body.classList.toggle("delete-mode",deleteMode);
- deleteModeButton.classList.toggle("active",deleteMode);
- deleteModeButton.textContent=deleteMode?"🗑️ 削除モード終了":"🗑️ 削除モード";
- deleteModeMessage.classList.toggle("show",deleteMode);await buildLayout();
+
+/* =========================
+   削除モード
+========================= */
+
+deleteModeButton.onclick=
+ async()=>{
+
+  deleteMode=
+   !deleteMode;
+
+
+  document.body.classList.toggle(
+   "delete-mode",
+   deleteMode
+  );
+
+
+  deleteModeButton.classList.toggle(
+   "active",
+   deleteMode
+  );
+
+
+  deleteModeButton.textContent=
+   deleteMode
+    ?"🗑️ 削除モード終了"
+    :"🗑️ 削除モード";
+
+
+  deleteModeMessage.classList.toggle(
+   "show",
+   deleteMode
+  );
+
+
+  await buildLayout();
+
 };
 
-clearButton.onclick=async()=>{
- if(!images.length)return;
- if(prompt('全部削除する場合は「削除」と入力してください')!=="削除")return;
- try{await clearDatabase();images=[];saveStatus.textContent="✓ すべて削除しました";await buildLayout()}catch(err){console.error(err);saveStatus.textContent="⚠ 削除に失敗しました"}
+
+/* =========================
+   全削除
+========================= */
+
+clearButton.onclick=
+ async()=>{
+
+  if(
+   !images.length
+  ){
+
+   return;
+
+  }
+
+
+  const answer=
+   prompt(
+    '全部削除する場合は「削除」と入力してください'
+   );
+
+
+  if(
+   answer!=="削除"
+  ){
+
+   return;
+
+  }
+
+
+  try{
+
+   await clearDatabase();
+
+
+   images=[];
+
+
+   saveStatus.textContent=
+    "✓ すべて削除しました";
+
+
+   await buildLayout();
+
+
+  }catch(error){
+
+   console.error(
+    error
+   );
+
+
+   saveStatus.textContent=
+    "⚠ 削除に失敗しました";
+
+  }
+
 };
 
-[widthInput,gapInput,marginInput].forEach(el=>el.addEventListener("change",()=>buildLayout()));
 
-pdfButton.onclick=async()=>{
- if(!images.length){alert("まず画像を追加してください");return}
- if(deleteMode){deleteMode=false;document.body.classList.remove("delete-mode");deleteModeButton.classList.remove("active");deleteModeButton.textContent="🗑️ 削除モード";deleteModeMessage.classList.remove("show")}
- await buildLayout();setTimeout(()=>window.print(),300);
+/* =========================
+   設定変更
+========================= */
+
+[
+ widthInput,
+ gapInput,
+ marginInput
+].forEach(
+ element=>{
+
+  element.addEventListener(
+   "change",
+   ()=>{
+    buildLayout();
+   }
+  );
+
+ }
+);
+
+
+/* =========================
+   印刷
+========================= */
+
+pdfButton.onclick=
+ async()=>{
+
+  if(
+   !images.length
+  ){
+
+   alert(
+    "まず画像を追加してください"
+   );
+
+   return;
+
+  }
+
+
+  if(deleteMode){
+
+   deleteMode=false;
+
+
+   document.body.classList.remove(
+    "delete-mode"
+   );
+
+
+   deleteModeButton.classList.remove(
+    "active"
+   );
+
+
+   deleteModeButton.textContent=
+    "🗑️ 削除モード";
+
+
+   deleteModeMessage.classList.remove(
+    "show"
+   );
+
+  }
+
+
+  await buildLayout();
+
+
+  setTimeout(
+   ()=>{
+    window.print();
+   },
+   300
+  );
+
 };
 
-window.addEventListener("resize",fitPagesToScreen);
+
+/* =========================
+   画面サイズ変更
+========================= */
+
+window.addEventListener(
+ "resize",
+ fitPagesToScreen
+);
+
+
+/* =========================
+   起動
+========================= */
 
 (async()=>{
- try{await openDatabase();images=await getAllImages();images.forEach(im=>{if(typeof im.rotation!=="number")im.rotation=0});await buildLayout()}
- catch(err){console.error(err);info.textContent="データベースを開けませんでした。"}
+
+ try{
+
+  await openDatabase();
+
+
+  images=
+   await getAllImages();
+
+
+  images.forEach(
+   image=>{
+
+    if(
+     typeof image.rotation!=="number"
+    ){
+
+     image.rotation=0;
+
+    }
+
+   }
+  );
+
+
+  await buildLayout();
+
+
+ }catch(error){
+
+  console.error(
+   error
+  );
+
+
+  info.textContent=
+   "データベースを開けませんでした。";
+
+ }
+
 })();
