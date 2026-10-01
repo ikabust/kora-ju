@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#9a7165">
+<title>推しスクショ A4プリンター</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f7f2ef;color:#4b3b36;font-family:-apple-system,BlinkMacSystemFont,"Noto Sans JP",sans-serif}
+header{background:#9a7165;color:white;padding:18px 16px 16px;position:sticky;top:0;z-index:5;box-shadow:0 2px 8px #0001}
+h1{font-size:20px;margin:0 0 4px}
+.sub{font-size:12px;opacity:.9}
+.controls{padding:14px 12px;display:flex;flex-wrap:wrap;gap:8px}
+button,.fileBtn,select{border:0;border-radius:12px;padding:11px 14px;background:white;color:#5a4640;box-shadow:0 1px 5px #0001;font-size:14px}
+button.primary,.fileBtn{background:#9a7165;color:white;font-weight:600}
+button:active,.fileBtn:active{transform:scale(.98)}
+input[type=file]{display:none}
+.settings{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:0 12px 8px;font-size:13px}
+.settings label{background:white;border-radius:12px;padding:8px 10px;box-shadow:0 1px 4px #0001}
+.settings input{width:45px;border:0;border-bottom:1px solid #baa49d;text-align:center;font-size:13px}
+.info{padding:4px 14px 12px;font-size:12px;color:#806d66}
+.pages{padding:0 10px 30px}
+.pageWrap{margin:0 auto 24px;max-width:850px}
+.pageTitle{font-size:13px;margin:0 0 7px 4px;font-weight:600}
+.page{position:relative;background:white;width:100%;aspect-ratio:210/297;box-shadow:0 3px 15px #0002;overflow:hidden}
+.item{position:absolute;overflow:hidden;background:#eee;cursor:grab}
+.item img{width:100%;height:100%;object-fit:fill;display:block}
+.item.selected{outline:2px solid #9a7165;outline-offset:-2px}
+.empty{padding:40px 20px;text-align:center;color:#a08e87;font-size:14px}
+.help{padding:0 14px 20px;font-size:12px;color:#806d66;line-height:1.7}
+@media print{
+ body{background:white}
+ header,.controls,.settings,.info,.help,.pageTitle{display:none!important}
+ .pages{padding:0}
+ .pageWrap{margin:0;width:210mm;height:297mm;max-width:none;page-break-after:always}
+ .page{width:210mm;height:297mm;box-shadow:none}
+}
+</style>
+</head>
+<body>
+<header>
+<h1>推しスクショ A4プリンター</h1>
+<div class="sub">選ぶだけで、比率を変えずにA4へ自動配置 ♡</div>
+</header>
+
+<div class="controls">
+<label class="fileBtn">スクショを選ぶ
+<input id="files" type="file" accept="image/*" multiple>
+</label>
+<button class="primary" id="auto">A4に自動配置</button>
+<button id="print">印刷する</button>
+<button id="clear">全部消す</button>
+</div>
+
+<div class="settings">
+<label>画像間隔 <input id="gap" type="number" min="0" max="20" value="3"> mm</label>
+<label>ページ余白 <input id="margin" type="number" min="0" max="20" value="5"> mm</label>
+<label>並び方
+<select id="order">
+<option value="original">選択した順</option>
+<option value="size">大きい順</option>
+<option value="tall">縦長を優先</option>
+</select>
+</label>
+</div>
+
+<div class="info" id="info">まだ画像がありません</div>
+<div class="pages" id="pages">
+<div class="empty">スクショを選んでね<br>何枚でもOK。A4を超えたら自動で2枚目へ送ります。</div>
+</div>
+<div class="help">
+※ 画像はこの端末のブラウザ内だけで処理します。サーバーへアップロードしません。<br>
+※ 印刷画面では「用紙サイズ：A4」「倍率：100%」を選ぶと、A4サイズで出力できます。
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+let imgs=[];
+
+$("files").addEventListener("change",e=>{
+  const files=[...e.target.files];
+  imgs=[];
+  files.forEach((f,i)=>{
+    const u=URL.createObjectURL(f);
+    const im=new Image();
+    im.onload=()=>{imgs.push({src:u,w:im.naturalWidth,h:im.naturalHeight,ratio:im.naturalWidth/im.naturalHeight,name:f.name,idx:i}); render();};
+    im.src=u;
+  });
+});
+
+$("gap").addEventListener("change",render);
+$("margin").addEventListener("change",render);
+$("order").addEventListener("change",render);
+$("auto").addEventListener("click",render);
+$("print").addEventListener("click",()=>window.print());
+$("clear").addEventListener("click",()=>{
+  imgs.forEach(x=>URL.revokeObjectURL(x.src));
+  imgs=[];$("files").value="";render();
+});
+
+function sorted(){
+  let a=[...imgs];
+  const mode=$("order").value;
+  if(mode==="size") a.sort((x,y)=>(y.w*y.h)-(x.w*x.h));
+  if(mode==="tall") a.sort((x,y)=>y.h/x.w-x.h/x.w);
+  return a;
+}
+
+/*
+  A4 is represented as 210 x 297 mm.
+  We use a simple row-based shelf packer. Each image keeps its original ratio.
+  Rows are built by testing a common height; images are scaled down until the
+  row fits. No rectangles can overlap because every row gets its own y range.
+*/
+function layoutPage(list, W=210,H=297,margin=5,gap=3){
+  const usableW=W-margin*2, usableH=H-margin*2;
+  let placed=[], y=margin, i=0;
+
+  while(i<list.length){
+    const remaining=usableH-(y-margin);
+    if(remaining<=1) break;
+
+    // Start a row with as many images as practical.
+    let row=list.slice(i);
+    let chosen=null;
+
+    for(let count=1; count<=row.length; count++){
+      const rs=row.slice(0,count);
+      // Fit the row into remaining vertical space and width.
+      // For a common row height t, total width=sum(ratio*t)+gaps.
+      const sumR=rs.reduce((s,x)=>s+x.ratio,0);
+      const maxByW=(usableW-gap*(count-1))/sumR;
+      const t=Math.min(maxByW, remaining);
+      if(t>0){
+        chosen={rs,t};
+        // Prefer adding another image while the row remains reasonably useful.
+        if(t<12) {
+          const trimmed=rs.slice(0,-1);
+          if(trimmed.length){
+            const trimmedSum=trimmed.reduce((s,x)=>s+x.ratio,0);
+            const trimmedT=Math.min((usableW-gap*(trimmed.length-1))/trimmedSum, remaining);
+            chosen={rs:trimmed,t:trimmedT};
+          } else {
+            chosen={rs:[],t:0};
+          }
+          break;
+        }
+      }
+    }
+
+    if(!chosen || !chosen.rs.length) break;
+    const rs=chosen.rs, t=chosen.t;
+    let x=margin;
+    rs.forEach(item=>{
+      const w=item.ratio*t;
+      placed.push({...item,x,y,w,h:t});
+      x+=w+gap;
+    });
+    y+=t+gap;
+    i+=rs.length;
+  }
+  return {placed,next:i};
+}
+
+function render(){
+  const root=$("pages");
+  root.innerHTML="";
+  if(!imgs.length){
+    root.innerHTML='<div class="empty">スクショを選んでね<br>何枚でもOK。A4を超えたら自動で2枚目へ送ります。</div>';
+    $("info").textContent="まだ画像がありません";
+    return;
+  }
+
+  const gap=Number($("gap").value)||0;
+  const margin=Number($("margin").value)||0;
+  let pool=sorted(), pages=[], safety=0;
+
+  while(pool.length && safety++<100){
+    const result=layoutPage(pool,210,297,margin,gap);
+    if(!result.placed.length){
+      // Extremely large minimum: force one image on a page.
+      const x=pool.shift();
+      const usableW=210-margin*2, usableH=297-margin*2;
+      const t=Math.min(usableW/x.ratio,usableH);
+      pages.push([{...x,x:margin,y:margin,w:x.ratio*t,h:t}]);
+    }else{
+      pages.push(result.placed);
+      pool=pool.slice(result.next);
+    }
+  }
+
+  pages.forEach((items,p)=>{
+    const wrap=document.createElement("div");
+    wrap.className="pageWrap";
+    wrap.innerHTML=`<div class="pageTitle">A4 ${p+1}ページ目　${items.length}枚</div>`;
+    const page=document.createElement("div");
+    page.className="page";
+    items.forEach(it=>{
+      const d=document.createElement("div");
+      d.className="item";
+      d.style.left=(it.x/210*100)+"%";
+      d.style.top=(it.y/297*100)+"%";
+      d.style.width=(it.w/210*100)+"%";
+      d.style.height=(it.h/297*100)+"%";
+      const im=document.createElement("img");
+      im.src=it.src;
+      im.alt=it.name;
+      d.appendChild(im);
+      page.appendChild(d);
+    });
+    wrap.appendChild(page);root.appendChild(wrap);
+  });
+  $("info").textContent=`${imgs.length}枚 → A4 ${pages.length}ページに自動配置`;
+}
+</script>
+</body>
+</html>
