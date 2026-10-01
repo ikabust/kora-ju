@@ -1,4 +1,3 @@
-const DB_NAME="oshiScreenshotPrinter",DB_VERSION=4,STORE_NAME="images";
 const A4_WIDTH=210,A4_HEIGHT=297;
 
 const fileInput=document.getElementById("fileInput");
@@ -13,48 +12,8 @@ const gapInput=document.getElementById("gapInput");
 const marginInput=document.getElementById("marginInput");
 const deleteModeMessage=document.getElementById("deleteModeMessage");
 
-let db=null;
 let images=[];
 let deleteMode=false;
-
-function openDatabase(){
-  return new Promise((resolve,reject)=>{
-    const r=indexedDB.open(DB_NAME,DB_VERSION);
-
-    r.onupgradeneeded=e=>{
-      const d=e.target.result;
-      if(!d.objectStoreNames.contains(STORE_NAME)){
-        d.createObjectStore(STORE_NAME,{keyPath:"id",autoIncrement:true});
-      }
-    };
-
-    r.onsuccess=e=>{
-      db=e.target.result;
-      resolve(db);
-    };
-
-    r.onerror=e=>reject(e.target.error);
-  });
-}
-
-function getAllImages(){
-  return new Promise((resolve,reject)=>{
-    const r=db.transaction(STORE_NAME,"readonly")
-      .objectStore(STORE_NAME)
-      .getAll();
-
-    r.onsuccess=()=>{
-      const a=r.result||[];
-      a.sort((x,y)=>
-        (typeof x.order==="number"?x.order:x.id)-
-        (typeof y.order==="number"?y.order:y.id)
-      );
-      resolve(a);
-    };
-
-    r.onerror=e=>reject(e.target.error);
-  });
-}
 
 function getImageRatio(blob){
   return new Promise((resolve,reject)=>{
@@ -62,9 +21,9 @@ function getImageRatio(blob){
     const im=new Image();
 
     im.onload=()=>{
-      const r=im.naturalWidth/im.naturalHeight;
+      const ratio=im.naturalWidth/im.naturalHeight;
       URL.revokeObjectURL(u);
-      resolve(r);
+      resolve(ratio);
     };
 
     im.onerror=()=>{
@@ -76,98 +35,33 @@ function getImageRatio(blob){
   });
 }
 
-async function saveImage(blob,name){
-  const ratio=await getImageRatio(blob);
-
-  // 横長は90°右回転、縦長・正方形は0°
-  const rotation=ratio>1?90:0;
-
-  return new Promise((resolve,reject)=>{
-    const s=db.transaction(STORE_NAME,"readwrite").objectStore(STORE_NAME);
-    const r=s.add({
-      blob,
-      name,
-      created:Date.now(),
-      order:Date.now()+Math.random(),
-      rotation
-    });
-
-    r.onsuccess=()=>resolve(r.result);
-    r.onerror=e=>reject(e.target.error);
-  });
-}
-
-function putImage(image){
-  return new Promise((resolve,reject)=>{
-    const t=db.transaction(STORE_NAME,"readwrite");
-    t.objectStore(STORE_NAME).put(image);
-    t.oncomplete=resolve;
-    t.onerror=e=>reject(e.target.error);
-  });
-}
-
-function deleteImage(id){
-  return new Promise((resolve,reject)=>{
-    const t=db.transaction(STORE_NAME,"readwrite");
-    const r=t.objectStore(STORE_NAME).delete(id);
-    r.onsuccess=resolve;
-    r.onerror=e=>reject(e.target.error);
-  });
-}
-
-function clearDatabase(){
-  return new Promise((resolve,reject)=>{
-    const t=db.transaction(STORE_NAME,"readwrite");
-    const r=t.objectStore(STORE_NAME).clear();
-    r.onsuccess=resolve;
-    r.onerror=e=>reject(e.target.error);
-  });
-}
-
-function saveOrder(){
-  return new Promise((resolve,reject)=>{
-    const t=db.transaction(STORE_NAME,"readwrite");
-    const s=t.objectStore(STORE_NAME);
-
-    images.forEach((im,i)=>{
-      im.order=i;
-      s.put(im);
-    });
-
-    t.oncomplete=resolve;
-    t.onerror=e=>reject(e.target.error);
-  });
-}
-
 function fitPagesToScreen(){
   const wraps=preview.querySelectorAll(".page-wrap");
   if(!wraps.length)return;
 
   const available=Math.max(1,preview.clientWidth-40);
 
-  wraps.forEach(w=>{
-    const p=w.querySelector(".page");
-    if(!p)return;
+  wraps.forEach(wrap=>{
+    const page=wrap.querySelector(".page");
+    if(!page)return;
 
-    p.style.transform="none";
+    page.style.transform="none";
 
-    const pw=p.offsetWidth;
-    const ph=p.offsetHeight;
+    const pageWidth=page.offsetWidth;
+    const pageHeight=page.offsetHeight;
+    const scale=Math.min(1,available/pageWidth);
 
-    const scale=Math.min(1,available/pw);
-
-    p.style.transform=`scale(${scale})`;
-    w.style.width=`${pw*scale}px`;
-    w.style.height=`${ph*scale}px`;
+    page.style.transform=`scale(${scale})`;
+    wrap.style.width=`${pageWidth*scale}px`;
+    wrap.style.height=`${pageHeight*scale}px`;
   });
 }
 
 async function prepareRatios(){
-  const jobs=images.map(async im=>{
-    if(!im._ratio){
-      im._ratio=await getImageRatio(im.blob);
+  const jobs=images.map(async image=>{
+    if(!image._ratio){
+      image._ratio=await getImageRatio(image.blob);
     }
-    return im;
   });
 
   await Promise.all(jobs);
@@ -183,61 +77,62 @@ async function buildLayout(){
 
   await prepareRatios();
 
-  // 入力値はcm。内部ではmmで計算する。
+  // 入力値はcm。内部ではmmで計算。
+  // 指定値は「回転後の短辺」。
   const shortSide=Math.max(1,parseFloat(widthInput.value)||4.5)*10;
   const gap=Math.max(0,parseFloat(gapInput.value)||0.3)*10;
   const margin=Math.max(0,parseFloat(marginInput.value)||0.5)*10;
 
-  const usableW=A4_WIDTH-margin*2;
   const usableH=A4_HEIGHT-margin*2;
 
   const pages=[];
   let pageItems=[];
   let x=margin;
   let y=margin;
+  let currentColumnWidth=0;
 
-  for(const im of images){
-    const rotated=im.rotation===90||im.rotation===270;
+  for(const image of images){
+    const rotated=image.rotation===90||image.rotation===270;
 
-    // 「短辺」を指定値に固定。
-    // 回転後の見た目で短辺がshortSideになるようにする。
-    const originalRatio=im._ratio;
-    let w=rotated ? shortSide : shortSide;
-    let h=rotated
-      ? shortSide*originalRatio
-      : shortSide/originalRatio;
+    let width=shortSide;
+    let height=rotated
+      ? shortSide*image._ratio
+      : shortSide/image._ratio;
 
-    // 1枚でA4の高さを超える場合のみ、A4内に収まるよう縮小。
-    if(h>usableH){
-      const scale=usableH/h;
-      w*=scale;
-      h*=scale;
+    // 1枚でA4の高さを超える場合だけ縮小。
+    if(height>usableH){
+      const scale=usableH/height;
+      width*=scale;
+      height*=scale;
     }
 
-    // 縦方向に置けなければ次の列へ。
-    if(y>margin && y+h> A4_HEIGHT-margin){
-      x+=shortSide+gap;
+    // 現在の列に入らなければ次の列へ。
+    if(y>margin && y+height>A4_HEIGHT-margin){
+      x+=currentColumnWidth+gap;
       y=margin;
+      currentColumnWidth=0;
     }
 
-    // 列幅は実際の画像幅を使う。
-    // 横幅が違う画像が混ざっても重なりにくいようにする。
-    if(x+w>A4_WIDTH-margin){
+    // A4の右端に入らなければ新しいページ。
+    if(x+width>A4_WIDTH-margin){
       if(pageItems.length)pages.push(pageItems);
+
       pageItems=[];
       x=margin;
       y=margin;
+      currentColumnWidth=0;
     }
 
     pageItems.push({
-      image:im,
+      image,
       left:x,
       top:y,
-      width:w,
-      height:h
+      width,
+      height
     });
 
-    y+=h+gap;
+    y+=height+gap;
+    currentColumnWidth=Math.max(currentColumnWidth,width);
   }
 
   if(pageItems.length)pages.push(pageItems);
@@ -255,46 +150,38 @@ function renderPages(pages){
     const page=document.createElement("div");
     page.className="page";
 
-    items.forEach(d=>{
-      const im=d.image;
+    items.forEach(data=>{
+      const image=data.image;
 
       const item=document.createElement("div");
       item.className="item";
       item.draggable=!deleteMode;
 
-      item.style.left=`${d.left}mm`;
-      item.style.top=`${d.top}mm`;
-      item.style.width=`${d.width}mm`;
-      item.style.height=`${d.height}mm`;
+      item.style.left=`${data.left}mm`;
+      item.style.top=`${data.top}mm`;
+      item.style.width=`${data.width}mm`;
+      item.style.height=`${data.height}mm`;
 
-      /*
-        item = 回転後の最終的な箱。
-        image-frame = 回転前の画像サイズの箱。
-        frameだけを回転させ、画像そのものは回転させない。
-
-        これにより、
-        ・PC
-        ・スマホ
-        ・印刷
-        で「4.5cmの短辺」を同じ基準で扱える。
-      */
+      // itemは「回転後」の最終サイズ。
+      // image-frameだけを回転させることで、
+      // スマホでも画像そのもののサイズが崩れにくい構造にする。
       const frame=document.createElement("div");
       frame.className="image-frame";
 
-      const rotated=im.rotation===90||im.rotation===270;
+      const rotated=image.rotation===90||image.rotation===270;
 
-      frame.style.width=`${rotated?d.height:d.width}mm`;
-      frame.style.height=`${rotated?d.width:d.height}mm`;
+      frame.style.width=`${rotated?data.height:data.width}mm`;
+      frame.style.height=`${rotated?data.width:data.height}mm`;
       frame.style.left="50%";
       frame.style.top="50%";
       frame.style.transform=
-        `translate(-50%,-50%) rotate(${im.rotation||0}deg)`;
+        `translate(-50%,-50%) rotate(${image.rotation||0}deg)`;
 
       const img=document.createElement("img");
-      const url=URL.createObjectURL(im.blob);
+      const url=URL.createObjectURL(image.blob);
 
       img.src=url;
-      img.alt=im.name||"画像";
+      img.alt=image.name||"画像";
 
       img.onload=()=>{
         URL.revokeObjectURL(url);
@@ -304,58 +191,47 @@ function renderPages(pages){
         URL.revokeObjectURL(url);
       };
 
-      const rb=document.createElement("button");
-      rb.className="rotate-button";
-      rb.type="button";
-      rb.textContent="↻";
-      rb.title=`回転：${im.rotation||0}°`;
+      frame.appendChild(img);
+      item.appendChild(frame);
 
-      rb.onclick=async e=>{
+      const rotateButton=document.createElement("button");
+      rotateButton.className="rotate-button";
+      rotateButton.type="button";
+      rotateButton.textContent="↻";
+      rotateButton.title=`回転：${image.rotation||0}°`;
+
+      rotateButton.onclick=e=>{
         e.preventDefault();
         e.stopPropagation();
 
         if(deleteMode)return;
 
-        im.rotation=im.rotation===90?0:90;
-
-        try{
-          await putImage(im);
-          saveStatus.textContent="✓ 回転を保存しました";
-          await buildLayout();
-        }catch(err){
-          console.error(err);
-          saveStatus.textContent="⚠ 回転の保存に失敗しました";
-        }
+        image.rotation=image.rotation===90?0:90;
+        saveStatus.textContent="✓ 回転しました";
+        buildLayout();
       };
+
+      item.appendChild(rotateButton);
 
       if(deleteMode){
-        const x=document.createElement("div");
-        x.className="delete-mark";
-        x.textContent="×";
-        item.appendChild(x);
+        const deleteMark=document.createElement("div");
+        deleteMark.className="delete-mark";
+        deleteMark.textContent="×";
+        item.appendChild(deleteMark);
       }
 
-      item.onclick=async e=>{
-        if(e.target===rb||!deleteMode)return;
+      item.onclick=e=>{
+        if(e.target===rotateButton||!deleteMode)return;
 
-        try{
-          await deleteImage(im.id);
-          images=images.filter(x=>x.id!==im.id);
-          await saveOrder();
-
+        const index=images.findIndex(x=>x===image);
+        if(index>=0){
+          images.splice(index,1);
           saveStatus.textContent="✓ 画像を削除しました";
-          await buildLayout();
-        }catch(err){
-          console.error(err);
-          saveStatus.textContent="⚠ 削除に失敗しました";
+          buildLayout();
         }
       };
 
-      frame.appendChild(img);
-      item.appendChild(frame);
-      item.appendChild(rb);
-
-      setupDrag(item,im);
+      setupDrag(item,image);
       page.appendChild(item);
     });
 
@@ -364,7 +240,6 @@ function renderPages(pages){
   });
 
   fitPagesToScreen();
-
   info.textContent=`${images.length}枚 / A4 ${pages.length}ページ`;
 }
 
@@ -376,7 +251,7 @@ function setupDrag(item,target){
     }
 
     e.dataTransfer.effectAllowed="move";
-    e.dataTransfer.setData("text/plain",String(target.id));
+    e.dataTransfer.setData("text/plain",String(images.indexOf(target)));
   };
 
   item.ondragover=e=>{
@@ -390,59 +265,66 @@ function setupDrag(item,target){
     item.classList.remove("drag-over");
   };
 
-  item.ondrop=async e=>{
+  item.ondrop=e=>{
     if(deleteMode)return;
 
     e.preventDefault();
     item.classList.remove("drag-over");
 
-    const id=Number(e.dataTransfer.getData("text/plain"));
-    if(!id||id===target.id)return;
+    const from=Number(e.dataTransfer.getData("text/plain"));
+    const to=images.indexOf(target);
 
-    const from=images.findIndex(x=>x.id===id);
-    const to=images.findIndex(x=>x.id===target.id);
+    if(from<0||to<0||from===to)return;
 
-    if(from<0||to<0)return;
+    const [moved]=images.splice(from,1);
+    images.splice(to,0,moved);
 
-    const [m]=images.splice(from,1);
-    images.splice(to,0,m);
-
-    await saveOrder();
-
-    saveStatus.textContent="✓ 並び順を保存しました";
-    await buildLayout();
+    saveStatus.textContent="✓ 並び順を変更しました";
+    buildLayout();
   };
 }
 
 fileInput.onchange=async e=>{
   const files=Array.from(e.target.files||[])
-    .filter(f=>f.type.startsWith("image/"));
+    .filter(file=>file.type.startsWith("image/"));
 
   if(!files.length)return;
 
-  saveStatus.textContent=`画像を保存しています… 0 / ${files.length}`;
+  saveStatus.textContent=`画像を読み込んでいます… 0 / ${files.length}`;
 
   try{
-    // まとめて保存してから1回だけ再描画する。
+    const newImages=[];
+
     for(let i=0;i<files.length;i++){
-      await saveImage(files[i],files[i].name);
+      const file=files[i];
+      const ratio=await getImageRatio(file);
+
+      newImages.push({
+        blob:file,
+        name:file.name,
+        rotation:ratio>1?90:0,
+        _ratio:ratio
+      });
+
       saveStatus.textContent=
-        `画像を保存しています… ${i+1} / ${files.length}`;
+        `画像を読み込んでいます… ${i+1} / ${files.length}`;
     }
 
-    fileInput.value="";
-    images=await getAllImages();
+    // 今回選択した画像を既存画像の後ろへ追加。
+    images.push(...newImages);
 
+    fileInput.value="";
     saveStatus.textContent=`✓ ${files.length}枚追加しました`;
+
     await buildLayout();
 
   }catch(err){
     console.error(err);
-    saveStatus.textContent="⚠ 画像の保存に失敗しました";
+    saveStatus.textContent="⚠ 画像の読み込みに失敗しました";
   }
 };
 
-deleteModeButton.onclick=async()=>{
+deleteModeButton.onclick=()=>{
   deleteMode=!deleteMode;
 
   document.body.classList.toggle("delete-mode",deleteMode);
@@ -453,29 +335,68 @@ deleteModeButton.onclick=async()=>{
 
   deleteModeMessage.classList.toggle("show",deleteMode);
 
-  await buildLayout();
+  buildLayout();
 };
 
-clearButton.onclick=async()=>{
+clearButton.onclick=()=>{
   if(!images.length)return;
 
   if(
     prompt('全部削除する場合は「削除」と入力してください')!=="削除"
   )return;
 
-  try{
-    await clearDatabase();
-    images=[];
-    saveStatus.textContent="✓ すべて削除しました";
-    await buildLayout();
-  }catch(err){
-    console.error(err);
-    saveStatus.textContent="⚠ 削除に失敗しました";
-  }
+  images=[];
+  saveStatus.textContent="✓ すべて削除しました";
+  buildLayout();
 };
 
-[widthInput,gapInput,marginInput].forEach(el=>{
-  el.addEventListener("change",()=>buildLayout());
+[widthInput,gapInput,marginInput].forEach(input=>{
+  input.addEventListener("change",buildLayout);
+});
+
+// 設定値だけlocalStorageへ保存。
+// 画像そのものは一切保存しない。
+const SETTINGS_KEY="oshiScreenshotPrinterSettings";
+
+function loadSettings(){
+  try{
+    const saved=JSON.parse(localStorage.getItem(SETTINGS_KEY)||"null");
+
+    if(!saved)return;
+
+    if(Number.isFinite(saved.width)){
+      widthInput.value=saved.width;
+    }
+
+    if(Number.isFinite(saved.gap)){
+      gapInput.value=saved.gap;
+    }
+
+    if(Number.isFinite(saved.margin)){
+      marginInput.value=saved.margin;
+    }
+  }catch(err){
+    console.warn("設定の読み込みに失敗しました",err);
+  }
+}
+
+function saveSettings(){
+  try{
+    localStorage.setItem(
+      SETTINGS_KEY,
+      JSON.stringify({
+        width:parseFloat(widthInput.value)||4.5,
+        gap:parseFloat(gapInput.value)||0.3,
+        margin:parseFloat(marginInput.value)||0.5
+      })
+    );
+  }catch(err){
+    console.warn("設定の保存に失敗しました",err);
+  }
+}
+
+[widthInput,gapInput,marginInput].forEach(input=>{
+  input.addEventListener("change",saveSettings);
 });
 
 pdfButton.onclick=async()=>{
@@ -493,26 +414,18 @@ pdfButton.onclick=async()=>{
   }
 
   await buildLayout();
-
   setTimeout(()=>window.print(),300);
 };
 
 window.addEventListener("resize",fitPagesToScreen);
 
+loadSettings();
+
 (async()=>{
   try{
-    await openDatabase();
-    images=await getAllImages();
-
-    images.forEach(im=>{
-      if(typeof im.rotation!=="number"){
-        im.rotation=0;
-      }
-    });
-
     await buildLayout();
   }catch(err){
     console.error(err);
-    info.textContent="データベースを開けませんでした。";
+    info.textContent="画像を表示できませんでした。";
   }
 })();

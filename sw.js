@@ -1,7 +1,7 @@
-const APP_VERSION = "1.4.7";
-const CACHE_NAME = `oshi-screenshot-printer-${APP_VERSION}`;
+const APP_VERSION="1.4.8";
+const CACHE_NAME=`oshi-screenshot-printer-${APP_VERSION}`;
 
-const APP_SHELL = [
+const APP_SHELL=[
   "./",
   "./index.html",
   "./manifest.json",
@@ -10,94 +10,91 @@ const APP_SHELL = [
   "./script.js"
 ];
 
-self.addEventListener("install", event => {
+self.addEventListener("install",event=>{
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(APP_SHELL))
-      .then(() => self.skipWaiting())
+      .then(cache=>cache.addAll(APP_SHELL))
+      .then(()=>self.skipWaiting())
   );
 });
 
-self.addEventListener("activate", event => {
+self.addEventListener("activate",event=>{
   event.waitUntil(
     caches.keys()
-      .then(keys =>
+      .then(keys=>
         Promise.all(
           keys
-            .filter(key =>
+            .filter(key=>
               key.startsWith("oshi-screenshot-printer-") &&
-              key !== CACHE_NAME
+              key!==CACHE_NAME
             )
-            .map(key => caches.delete(key))
+            .map(key=>caches.delete(key))
         )
       )
-      .then(() => self.clients.claim())
+      .then(()=>self.clients.claim())
   );
 });
 
-self.addEventListener("fetch", event => {
-  const request = event.request;
+self.addEventListener("fetch",event=>{
+  const request=event.request;
 
-  if(request.method !== "GET") return;
+  if(request.method!=="GET")return;
 
-  // HTMLは常にネットワークを優先。
+  // HTMLはネットワーク優先。
   if(
-    request.mode === "navigate" ||
-    request.destination === "document"
+    request.mode==="navigate" ||
+    request.destination==="document"
   ){
     event.respondWith(
-      fetch(request, {cache:"no-store"})
-        .then(response => {
+      fetch(request,{cache:"no-store"})
+        .then(response=>{
           const copy=response.clone();
 
           caches.open(CACHE_NAME)
-            .then(cache => cache.put("./index.html",copy));
+            .then(cache=>cache.put("./index.html",copy));
 
           return response;
         })
-        .catch(() => caches.match("./index.html"))
+        .catch(()=>caches.match("./index.html"))
     );
-
     return;
   }
 
   // JS / CSSは更新を優先。
-  // スマホ側に古いアプリ本体が残るのを防ぐ。
   if(
-    request.destination === "script" ||
-    request.destination === "style"
+    request.destination==="script" ||
+    request.destination==="style"
   ){
     event.respondWith(
       fetch(request,{cache:"no-store"})
-        .then(response => {
-          if(response && response.ok){
+        .then(response=>{
+          if(response&&response.ok){
             const copy=response.clone();
 
             caches.open(CACHE_NAME)
-              .then(cache => cache.put(request,copy));
+              .then(cache=>cache.put(request,copy));
           }
 
           return response;
         })
-        .catch(() => caches.match(request))
+        .catch(()=>caches.match(request))
     );
-
     return;
   }
 
-  // 画像・manifestなどはキャッシュ優先。
+  // その他の静的ファイルはキャッシュ優先。
   event.respondWith(
     caches.match(request)
-      .then(cached => {
+      .then(cached=>{
         if(cached)return cached;
 
         return fetch(request)
-          .then(response => {
-            if(response && response.ok){
+          .then(response=>{
+            if(response&&response.ok){
               const copy=response.clone();
 
               caches.open(CACHE_NAME)
-                .then(cache => cache.put(request,copy));
+                .then(cache=>cache.put(request,copy));
             }
 
             return response;
