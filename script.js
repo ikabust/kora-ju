@@ -41,11 +41,7 @@ function openDatabase(){
 
    const d=e.target.result;
 
-   if(
-    !d.objectStoreNames.contains(
-     STORE_NAME
-    )
-   ){
+   if(!d.objectStoreNames.contains(STORE_NAME)){
 
     d.createObjectStore(
      STORE_NAME,
@@ -118,7 +114,7 @@ function getAllImages(){
 
 
 /* =========================
-   元画像の比率取得
+   画像比率
 ========================= */
 
 function getImageRatio(blob){
@@ -134,7 +130,7 @@ function getImageRatio(blob){
   img.onload=()=>{
 
    const ratio=
-    img.naturalWidth /
+    img.naturalWidth/
     img.naturalHeight;
 
    URL.revokeObjectURL(url);
@@ -166,22 +162,15 @@ function getImageRatio(blob){
    画像保存
 ========================= */
 
-async function saveImage(
- blob,
- name
-){
+async function saveImage(blob,name){
 
  const ratio=
   await getImageRatio(blob);
 
  /*
-   横長画像
-   → 自動で90°回転
-
-   縦長画像
-   → そのまま
+   横長 → 90°
+   縦長 → 0°
  */
-
  const rotation=
   ratio>1
    ?90
@@ -225,7 +214,6 @@ async function saveImage(
      request.result
     );
    };
-
 
    request.onerror=e=>{
     reject(
@@ -365,8 +353,7 @@ function saveOrder(){
     );
 
    const store=
-    transaction
-    .objectStore(
+    transaction.objectStore(
      STORE_NAME
     );
 
@@ -470,7 +457,7 @@ function fitPagesToScreen(){
 
 
 /* =========================
-   比率を準備
+   比率準備
 ========================= */
 
 async function prepareRatios(){
@@ -479,9 +466,7 @@ async function prepareRatios(){
   images.map(
    async image=>{
 
-    if(
-     !image._ratio
-    ){
+    if(!image._ratio){
 
      image._ratio=
       await getImageRatio(
@@ -504,7 +489,7 @@ async function prepareRatios(){
 
 
 /* =========================
-   A4レイアウト作成
+   A4レイアウト
 ========================= */
 
 async function buildLayout(){
@@ -562,70 +547,51 @@ async function buildLayout(){
  let pageItems=[];
 
  let x=margin;
-
  let y=margin;
 
-
- /*
-   左上から下方向へ並べる。
-
-   下まで来たら
-   次の列へ移動。
-
-   右端まで来たら
-   次のA4ページへ。
- */
 
  for(
   const image of images
  ){
 
   /*
-    ここでは
-    「実際にA4上で表示される
-     横幅・高さ」を計算する。
+    ここでは「印刷用の枠」の
+    横幅・高さだけを決める。
 
-    元画像の比率は
-    常に image._ratio を使用。
-
-    90°の場合だけ
-    横と縦を入れ替える。
+    元画像の比率は絶対に変更しない。
   */
 
+  let boxWidth=width;
 
-  let displayWidth=
-   width;
+  let boxHeight=
+   width/image._ratio;
 
-  let displayHeight=
-   width /
-   image._ratio;
 
+  /*
+    90°回転する場合は
+    A4上で見える縦横を反転。
+  */
 
   if(
    image.rotation===90 ||
    image.rotation===270
   ){
 
-   const originalWidth=
-    displayWidth;
+   const temp=boxWidth;
 
-   displayWidth=
-    displayHeight;
-
-   displayHeight=
-    originalWidth;
+   boxWidth=boxHeight;
+   boxHeight=temp;
 
   }
 
 
   /*
-    下に入らない場合
-    次の列へ
+    下に入らなければ次の列
   */
 
   if(
    y>margin &&
-   y+displayHeight>
+   y+boxHeight>
     A4_HEIGHT-margin
   ){
 
@@ -639,18 +605,15 @@ async function buildLayout(){
 
 
   /*
-    右端まで来たら
-    次のA4ページ
+    右端まで来たら次ページ
   */
 
   if(
-   x+displayWidth>
+   x+boxWidth>
     A4_WIDTH-margin
   ){
 
-   if(
-    pageItems.length
-   ){
+   if(pageItems.length){
 
     pages.push(
      pageItems
@@ -662,31 +625,29 @@ async function buildLayout(){
    pageItems=[];
 
    x=margin;
-
    y=margin;
 
   }
 
 
   /*
-    A4より縦に長すぎる画像だけ
-    A4内に収まるよう縮小
+    A4に入りきらない場合
   */
 
   if(
-   displayHeight>
+   boxHeight>
     usableHeight
   ){
 
    const scale=
     usableHeight/
-    displayHeight;
+    boxHeight;
 
-   displayHeight=
+   boxHeight=
     usableHeight;
 
-   displayWidth=
-    displayWidth*
+   boxWidth=
+    boxWidth*
     scale;
 
   }
@@ -700,23 +661,21 @@ async function buildLayout(){
 
    top:y,
 
-   width:displayWidth,
+   width:boxWidth,
 
-   height:displayHeight
+   height:boxHeight
 
   });
 
 
   y+=
-   displayHeight+
+   boxHeight+
    gap;
 
  }
 
 
- if(
-  pageItems.length
- ){
+ if(pageItems.length){
 
   pages.push(
    pageItems
@@ -736,9 +695,7 @@ async function buildLayout(){
    A4ページ描画
 ========================= */
 
-function renderPages(
- pages
-){
+function renderPages(pages){
 
  preview.innerHTML="";
 
@@ -771,6 +728,12 @@ function renderPages(
       data.image;
 
 
+     /*
+       =========================
+       外側の枠
+       =========================
+     */
+
      const item=
       document.createElement(
        "div"
@@ -802,21 +765,15 @@ function renderPages(
        画像
        =========================
 
-       ★重要★
+       ここが今回の重要部分。
 
-       画像の「元の縦横比」は
-       _ratio のまま。
+       img自体をwidth/heightで
+       無理やり変形させない。
 
-       90°回転するときは
-       回転前の画像サイズを
-       縦横入れ替えてから
-       CSSで90°回転する。
-
-       これで画像自体を
-       横に引き伸ばしたり
-       縦に潰したりしない。
+       「画像の元サイズ」を
+       そのまま使い、
+       CSSのscaleで枠に合わせる。
      */
-
 
      const img=
       document.createElement(
@@ -837,37 +794,12 @@ function renderPages(
       "画像";
 
 
-     const rotated=
-      image.rotation===90 ||
-      image.rotation===270;
-
-
      /*
-       回転前の画像サイズ
+       元画像の比率を維持
      */
-
-     if(rotated){
-
-      img.style.width=
-       `${data.height}mm`;
-
-      img.style.height=
-       `${data.width}mm`;
-
-     }else{
-
-      img.style.width=
-       `${data.width}mm`;
-
-      img.style.height=
-       `${data.height}mm`;
-
-     }
-
 
      img.style.position=
       "absolute";
-
 
      img.style.left=
       "50%";
@@ -876,12 +808,138 @@ function renderPages(
       "50%";
 
 
+     img.style.width=
+      "auto";
+
+     img.style.height=
+      "auto";
+
+
+     img.style.maxWidth=
+      "none";
+
+     img.style.maxHeight=
+      "none";
+
+
      img.style.transformOrigin=
-      "center";
+      "center center";
 
 
-     img.style.transform=
-      `translate(-50%,-50%) rotate(${image.rotation||0}deg)`;
+     /*
+       元画像を読み込んだ後、
+       表示枠にぴったりになる
+       scaleを計算する。
+     */
+
+     img.onload=()=>{
+
+      const naturalWidth=
+       img.naturalWidth;
+
+      const naturalHeight=
+       img.naturalHeight;
+
+
+      if(
+       !naturalWidth ||
+       !naturalHeight
+      ){
+       return;
+      }
+
+
+      /*
+        CSS上の画像サイズを
+        A4のmm換算で作る。
+
+        まず「90°回転前」の
+        画像サイズを決める。
+      */
+
+      const rotated=
+       image.rotation===90 ||
+       image.rotation===270;
+
+
+      let targetWidth=
+       data.width;
+
+      let targetHeight=
+       data.height;
+
+
+      /*
+        回転する画像は
+        回転前の縦横に戻す。
+      */
+
+      if(rotated){
+
+       const temp=
+        targetWidth;
+
+       targetWidth=
+        targetHeight;
+
+       targetHeight=
+        temp;
+
+      }
+
+
+      /*
+        元画像の比率を使って
+        「高さ基準」で表示。
+
+        widthはautoなので
+        ブラウザが元比率を維持する。
+      */
+
+      const naturalRatio=
+       naturalWidth/
+       naturalHeight;
+
+
+      let displayHeight=
+       targetHeight;
+
+      let displayWidth=
+       displayHeight*
+       naturalRatio;
+
+
+      /*
+        幅が枠を超える場合は
+        幅基準にする。
+      */
+
+      if(
+       displayWidth>
+        targetWidth
+      ){
+
+       displayWidth=
+        targetWidth;
+
+       displayHeight=
+        displayWidth/
+        naturalRatio;
+
+      }
+
+
+      img.style.width=
+       `${displayWidth}mm`;
+
+      img.style.height=
+       `${displayHeight}mm`;
+
+
+      img.style.transform=
+       `translate(-50%,-50%) rotate(${image.rotation||0}deg)`;
+
+     };
 
 
      /*
@@ -899,14 +957,11 @@ function renderPages(
      rotateButton.className=
       "rotate-button";
 
-
      rotateButton.type=
       "button";
 
-
      rotateButton.textContent=
       "↻";
-
 
      rotateButton.title=
       `回転：${image.rotation||0}°`;
@@ -924,10 +979,6 @@ function renderPages(
         return;
        }
 
-
-       /*
-         0° ⇄ 90°
-       */
 
        image.rotation=
         image.rotation===90
@@ -977,14 +1028,11 @@ function renderPages(
         "div"
        );
 
-
       deleteMark.className=
        "delete-mark";
 
-
       deleteMark.textContent=
        "×";
-
 
       item.appendChild(
        deleteMark
@@ -1024,7 +1072,7 @@ function renderPages(
          images.filter(
           item=>
            item.id!==image.id
-         );
+        );
 
 
         await saveOrder();
@@ -1055,7 +1103,6 @@ function renderPages(
      item.appendChild(
       img
      );
-
 
      item.appendChild(
       rotateButton
@@ -1263,12 +1310,8 @@ fileInput.onchange=
    );
 
 
-  if(
-   !files.length
-  ){
-
+  if(!files.length){
    return;
-
   }
 
 
@@ -1277,13 +1320,6 @@ fileInput.onchange=
 
 
   try{
-
-   /*
-     まとめて保存。
-
-     保存途中では
-     レイアウトを再構築しない。
-   */
 
    for(
     let i=0;
@@ -1379,12 +1415,8 @@ deleteModeButton.onclick=
 clearButton.onclick=
  async()=>{
 
-  if(
-   !images.length
-  ){
-
+  if(!images.length){
    return;
-
   }
 
 
@@ -1462,9 +1494,7 @@ clearButton.onclick=
 pdfButton.onclick=
  async()=>{
 
-  if(
-   !images.length
-  ){
+  if(!images.length){
 
    alert(
     "まず画像を追加してください"
