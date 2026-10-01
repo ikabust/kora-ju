@@ -38,6 +38,7 @@ input[type=file]{display:none}
 .item{touch-action:manipulation}
 .item .editBadge{position:absolute;right:3px;bottom:3px;background:#9a7165;color:#fff;border-radius:8px;padding:2px 5px;font-size:9px;opacity:.9;z-index:2}
 
+.saveStatus{font-size:12px;color:#806d66;padding:0 14px 8px}
 </style>
 </head>
 <body>
@@ -51,6 +52,7 @@ input[type=file]{display:none}
 <button class="primary" id="auto">A4に自動配置</button>
 <button class="primary" id="pdf">高画質PDFを作る</button>
 <button id="print">印刷する</button>
+<button id="saveNow">一時保存</button>
 <button id="clear">全部消す</button>
 </div>
 
@@ -66,7 +68,8 @@ input[type=file]{display:none}
 </label>
 </div>
 
-<div class="info" id="info">まだ画像がありません　｜　「スクショを選ぶ」から何回でも追加できます</div>
+<div class="info" id="info">まだ画像がありません　｜　スクショは何回でも追加できます</div>
+<div class="info" id="saveStatus">このブラウザに自動保存されます</div>
 <div id="status"></div>
 <div class="pages" id="pages">
 <div class="empty">スクショを選んでね<br>何枚でもOK。右端にはみ出す画像は次の段へ。A4横に入りきらなければ次ページへ送ります。</div>
@@ -88,45 +91,175 @@ const $=id=>document.getElementById(id);
 let imgs=[];
 let cropTarget=null,cropDraft=null,cropPointer=null;
 
+
+const STORAGE_KEY="oshi_a4_printer_project_v1";
+
+function showSave(message){
+  const el=$("saveStatus");
+  if(el) el.textContent=message;
+}
+
+function saveProject(){
+  try{
+    const data={
+      version:1,
+      savedAt:new Date().toISOString(),
+      settings:{
+        targetH:$("targetH")?.value || "4.5",
+        gap:$("gap")?.value || "3",
+        margin:$("margin")?.value || "5",
+        order:$("order")?.value || "original",
+        orientation:$("orientation")?.value || "none"
+      },
+      images:imgs.map(x=>({
+        name:x.name,w:x.w,h:x.h,ratio:x.ratio,rotate:x.rotate||0,
+        // Image data is stored locally so the project can survive reloads.
+        data:x.data || null
+      }))
+    };
+    // Don't save if images have not yet been converted to data.
+    // saveProjectAsync() below handles actual image persistence.
+    localStorage.setItem(STORAGE_KEY,JSON.stringify(data));
+  }catch(e){
+    console.warn("local save failed",e);
+  }
+}
+
+async function imageToDataURL(file){
+  return await new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onload=()=>resolve(reader.result);
+    reader.onerror=reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+async function saveProjectAsync(){
+  try{
+    for(const x of imgs){
+      if(!x.data && x.file){
+        x.data=await imageToDataURL(x.file);
+      }
+    }
+    const data={
+      version:1,
+      savedAt:new Date().toISOString(),
+      settings:{
+        targetH:$("targetH")?.value || "4.5",
+        gap:$("gap")?.value || "3",
+        margin:$("margin")?.value || "5",
+        order:$("order")?.value || "original",
+        orientation:$("orientation")?.value || "none"
+      },
+      images:imgs.map(x=>({
+        name:x.name,w:x.w,h:x.h,ratio:x.ratio,rotate:x.rotate||0,data:x.data||null
+      }))
+    };
+    localStorage.setItem(STORAGE_KEY,JSON.stringify(data));
+    showSave("自動保存済み");
+  }catch(e){
+    console.warn(e);
+    showSave("画像が大きいため自動保存できませんでした");
+  }
+}
+
+async function restoreProject(){
+  try{
+    const raw=localStorage.getItem(STORAGE_KEY);
+    if(!raw)return;
+    const data=JSON.parse(raw);
+    if(!data.images || !data.images.length)return;
+
+    if(data.settings){
+      if($("targetH"))$("targetH").value=data.settings.targetH||"4.5";
+      if($("gap"))$("gap").value=data.settings.gap||"3";
+      if($("margin"))$("margin").value=data.settings.margin||"5";
+      if($("order"))$("order").value=data.settings.order||"original";
+      if($("orientation"))$("orientation").value=data.settings.orientation||"none";
+    }
+
+    for(const x of data.images){
+      if(!x.data)continue;
+      const blob=await (await fetch(x.data)).blob();
+      const url=URL.createObjectURL(blob);
+      const image=new Image();
+      await new Promise((resolve,reject)=>{
+        image.onload=resolve;image.onerror=reject;image.src=url;
+      });
+      imgs.push({
+        src:url,w:image.naturalWidth||x.w,h:image.naturalHeight||x.h,
+        ratio:(image.naturalWidth||x.w)/(image.naturalHeight||x.h),
+        name:x.name||"画像",idx:(Date.now()+"_"+Math.random()),
+        file:blob, data:x.data, rotate:x.rotate||0
+      });
+    }
+    render();
+    showSave("前回の作業を復元しました");
+  }catch(e){
+    console.warn("restore failed",e);
+    showSave("前回の作業を復元できませんでした");
+  }
+}
+
+$("saveNow").addEventListener("click",async()=>{
+  await saveProjectAsync();
+  showSave("一時保存しました");
+});
+
 $("files").addEventListener("change", function(e){
   const files = Array.from(e.target.files || []);
   if (!files.length) return;
 
+  let loaded = 0;
   files.forEach(function(file){
     const url = URL.createObjectURL(file);
     const image = new Image();
 
     image.onload = function(){
       imgs.push({
-        src: url,
-        w: image.naturalWidth,
-        h: image.naturalHeight,
-        ratio: image.naturalWidth / image.naturalHeight,
-        name: file.name,
-        idx: Date.now() + Math.random(),
-        file: file,
-        rotate: 0
+        src:url,
+        w:image.naturalWidth,
+        h:image.naturalHeight,
+        ratio:image.naturalWidth/image.naturalHeight,
+        name:file.name,
+        idx:(Date.now()+"_"+Math.random()),
+        file:file,
+        rotate:0
       });
+      loaded++;
       render();
+      saveProject();
+      if(loaded===files.length){
+        showSave("スクショを追加して保存しました");
+      }
     };
 
     image.onerror = function(){
       URL.revokeObjectURL(url);
+      loaded++;
+      if(loaded===files.length) showSave("一部の画像を読み込めませんでした");
     };
 
-    image.src = url;
+    image.src=url;
   });
 
-  // Same file can be selected again later.
-  e.target.value = "";
+  // Reset input so selecting the same file again also triggers change.
+  e.target.value="";
 });
-["gap","margin","order"].forEach(id=>$(id).addEventListener("change",render));
+["targetH","gap","margin","order","orientation"].forEach(id=>{
+  const el=$(id);
+  if(el)el.addEventListener("change",()=>{render();saveProjectAsync();});
+});
 $("auto").addEventListener("click",render);
 $("print").addEventListener("click",()=>window.print());
 $("pdf").addEventListener("click",makePDF);
 $("clear").addEventListener("click",()=>{
-  imgs.forEach(x=>URL.revokeObjectURL(x.src));
-  imgs=[];$("files").value="";render();
+  imgs.forEach(x=>{if(x.src)URL.revokeObjectURL(x.src)});
+  imgs=[];
+  $("files").value="";
+  localStorage.removeItem(STORAGE_KEY);
+  render();
+  showSave("保存データも削除しました");
 });
 
 function sorted(){
@@ -308,6 +441,7 @@ async function createPDF(pages){
 }
 
 render();
+restoreProject();
 </script>
 </body>
 </html>
