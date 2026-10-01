@@ -66,7 +66,7 @@ input[type=file]{display:none}
 </label>
 </div>
 
-<div class="info" id="info">まだ画像がありません　｜　スクショは何回でも追加できます。長押しで順番を入れ替えられます</div>
+<div class="info" id="info">まだ画像がありません　｜　「スクショを選ぶ」から何回でも追加できます</div>
 <div id="status"></div>
 <div class="pages" id="pages">
 <div class="empty">スクショを選んでね<br>何枚でもOK。右端にはみ出す画像は次の段へ。A4横に入りきらなければ次ページへ送ります。</div>
@@ -88,20 +88,37 @@ const $=id=>document.getElementById(id);
 let imgs=[];
 let cropTarget=null,cropDraft=null,cropPointer=null;
 
-$("files").addEventListener("change",e=>{
-  const files=[...e.target.files];
-  const start=imgs.length;
-  files.forEach((f,j)=>{
-    const u=URL.createObjectURL(f);
-    const im=new Image();
-    im.onload=()=>{
-      imgs.push({src:u,w:im.naturalWidth,h:im.naturalHeight,ratio:im.naturalWidth/im.naturalHeight,
-        name:f.name,idx:start+j,file:f,rotate:0,crop:null});
+$("files").addEventListener("change", function(e){
+  const files = Array.from(e.target.files || []);
+  if (!files.length) return;
+
+  files.forEach(function(file){
+    const url = URL.createObjectURL(file);
+    const image = new Image();
+
+    image.onload = function(){
+      imgs.push({
+        src: url,
+        w: image.naturalWidth,
+        h: image.naturalHeight,
+        ratio: image.naturalWidth / image.naturalHeight,
+        name: file.name,
+        idx: Date.now() + Math.random(),
+        file: file,
+        rotate: 0
+      });
       render();
     };
-    im.src=u;
+
+    image.onerror = function(){
+      URL.revokeObjectURL(url);
+    };
+
+    image.src = url;
   });
-  e.target.value="";
+
+  // Same file can be selected again later.
+  e.target.value = "";
 });
 ["gap","margin","order"].forEach(id=>$(id).addEventListener("change",render));
 $("auto").addEventListener("click",render);
@@ -113,9 +130,10 @@ $("clear").addEventListener("click",()=>{
 });
 
 function sorted(){
-  let a=[...imgs],mode=$("order").value;
-  if(mode==="size")a.sort((x,y)=>(y.w*y.h)-(x.w*x.h));
-  if(mode==="tall")a.sort((x,y)=>y.h/x.w-x.h/x.w);
+  let a = [...imgs];
+  const mode = $("order").value;
+  if(mode==="size") a.sort((x,y)=>(y.w*y.h)-(x.w*x.h));
+  if(mode==="tall") a.sort((x,y)=>(y.h/y.w)-(x.h/x.w));
   return a;
 }
 
