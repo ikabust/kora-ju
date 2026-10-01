@@ -32,6 +32,20 @@ input[type=file]{display:none}
  .pages{padding:0}.pageWrap{margin:0;width:210mm;height:297mm;max-width:none;page-break-after:always}
  .page{width:210mm;height:297mm;box-shadow:none}
 }
+
+.cropModal{position:fixed;inset:0;background:#0009;z-index:20;display:none;align-items:center;justify-content:center;padding:16px}
+.cropModal.show{display:flex}
+.cropBox{width:min(94vw,700px);background:#fff;border-radius:18px;padding:14px;box-shadow:0 8px 35px #0005}
+.cropTitle{font-weight:700;margin:0 0 10px}
+.cropStage{position:relative;width:100%;height:min(62vh,560px);background:#222;overflow:hidden;border-radius:10px;display:flex;align-items:center;justify-content:center;touch-action:none}
+.cropStage img{display:block;max-width:100%;max-height:100%;user-select:none;-webkit-user-drag:none}
+.cropRect{position:absolute;border:2px solid #fff;box-shadow:0 0 0 9999px rgba(0,0,0,.48);cursor:move;touch-action:none}
+.cropHandle{position:absolute;width:18px;height:18px;background:#fff;border:2px solid #9a7165;border-radius:50%}
+.cropHandle.tl{left:-9px;top:-9px}.cropHandle.tr{right:-9px;top:-9px}
+.cropHandle.bl{left:-9px;bottom:-9px}.cropHandle.br{right:-9px;bottom:-9px}
+.cropTools{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.cropTools button{flex:1;min-width:100px}
+.cropHint{font-size:11px;color:#806d66;margin-top:8px}
+
 </style>
 </head>
 <body>
@@ -60,7 +74,7 @@ input[type=file]{display:none}
 </label>
 </div>
 
-<div class="info" id="info">まだ画像がありません</div>
+<div class="info" id="info">まだ画像がありません　｜　配置後の画像をタップすると切り取りできます</div>
 <div id="status"></div>
 <div class="pages" id="pages">
 <div class="empty">スクショを選んでね<br>何枚でもOK。A4を超えたら自動で2枚目へ送ります。</div>
@@ -72,9 +86,19 @@ input[type=file]{display:none}
 ※PDFの仕様上、画像の実ファイルサイズ・プリンター・PDFビューアなどによって最終的な見え方は変わります。
 </div>
 
+
+<div class="cropModal" id="cropModal">
+<div class="cropBox">
+<div class="cropTitle">画像を切り取り</div>
+<div class="cropStage" id="cropStage"><img id="cropImg" alt=""><div class="cropRect" id="cropRect"><i class="cropHandle tl"></i><i class="cropHandle tr"></i><i class="cropHandle bl"></i><i class="cropHandle br"></i></div></div>
+<div class="cropTools"><button id="cropReset">元に戻す</button><button id="cropCancel">キャンセル</button><button class="primary" id="cropApply">切り取りを適用</button></div>
+<div class="cropHint">四隅を動かして範囲を変更。枠の中をドラッグすると位置を移動できます。</div>
+</div></div>
+
 <script>
 const $=id=>document.getElementById(id);
 let imgs=[];
+let cropTarget=null,cropDraft=null,cropPointer=null;
 
 $("files").addEventListener("change",e=>{
   const files=[...e.target.files];
@@ -166,12 +190,39 @@ function render(){
       d.style.left=it.x/210*100+"%";d.style.top=it.y/297*100+"%";
       d.style.width=it.w/210*100+"%";d.style.height=it.h/297*100+"%";
       const im=document.createElement("img");im.src=it.src;im.alt=it.name;
-      d.appendChild(im);page.appendChild(d);
+      if(it.crop){const c=it.crop;im.style.maxWidth="none";im.style.maxHeight="none";im.style.position="absolute";im.style.width=(100/c.w)+"%";im.style.height=(100/c.h)+"%";im.style.left=(-c.x/c.w*100)+"%";im.style.top=(-c.y/c.h*100)+"%";}
+      d.appendChild(im);d.title="タップして切り取り";d.addEventListener("click",()=>openCrop(it));
+      page.appendChild(d);
     });
     wrap.appendChild(page);root.appendChild(wrap);
   });
   $("info").textContent=`${imgs.length}枚 → A4 ${pages.length}ページに自動配置`;
 }
+
+
+function openCrop(item){
+ cropTarget=item; cropImg.onload=()=>{const r=item.crop||{x:0,y:0,w:1,h:1};cropDraft={...r};updateCropEditor();cropModal.classList.add("show")};cropImg.src=item.src;
+}
+function updateCropEditor(){if(!cropDraft)return;cropRect.style.left=(cropDraft.x*100)+"%";cropRect.style.top=(cropDraft.y*100)+"%";cropRect.style.width=(cropDraft.w*100)+"%";cropRect.style.height=(cropDraft.h*100)+"%";}
+$("cropReset").onclick=()=>{cropDraft={x:0,y:0,w:1,h:1};updateCropEditor()};
+$("cropCancel").onclick=()=>{cropModal.classList.remove("show");cropTarget=null};
+$("cropApply").onclick=()=>{if(cropTarget){const r=cropDraft;if(r.x===0&&r.y===0&&r.w===1&&r.h===1)delete cropTarget.crop;else cropTarget.crop={...r};}cropModal.classList.remove("show");cropTarget=null;render()};
+
+function ppos(e){const r=cropStage.getBoundingClientRect();return{x:(e.clientX-r.left)/r.width,y:(e.clientY-r.top)/r.height}}
+cropRect.addEventListener("pointerdown",e=>{if(e.target.classList.contains("cropHandle"))return;e.preventDefault();cropRect.setPointerCapture(e.pointerId);const p=ppos(e);cropPointer={mode:"move",sx:p.x,sy:p.y,o:{...cropDraft}}});
+cropRect.addEventListener("pointermove",e=>{if(!cropPointer||cropPointer.mode!=="move")return;const p=ppos(e),o=cropPointer.o;let x=Math.max(0,Math.min(1-o.w,o.x+p.x-cropPointer.sx)),y=Math.max(0,Math.min(1-o.h,o.y+p.y-cropPointer.sy));cropDraft={...o,x,y};updateCropEditor()});
+cropRect.addEventListener("pointerup",()=>cropPointer=null);
+document.querySelectorAll(".cropHandle").forEach(h=>{
+ h.addEventListener("pointerdown",e=>{e.preventDefault();e.stopPropagation();h.setPointerCapture(e.pointerId);const p=ppos(e);cropPointer={mode:h.className.split(" ")[1],sx:p.x,sy:p.y,o:{...cropDraft}}});
+ h.addEventListener("pointermove",e=>{if(!cropPointer||cropPointer.mode==="move")return;const p=ppos(e),o=cropPointer.o,m=cropPointer.mode,min=.03;let x=o.x,y=o.y,w=o.w,hg=o.h;
+  if(m==="tl"){x=Math.max(0,Math.min(o.x+o.w-min,p.x));y=Math.max(0,Math.min(o.y+o.h-min,p.y));w=o.x+o.w-x;hg=o.y+o.h-y}
+  if(m==="tr"){y=Math.max(0,Math.min(o.y+o.h-min,p.y));w=Math.max(min,Math.min(1-o.x,p.x)-o.x);hg=o.y+o.h-y}
+  if(m==="bl"){x=Math.max(0,Math.min(o.x+o.w-min,p.x));w=o.x+o.w-x;hg=Math.max(min,Math.min(1-o.y,p.y)-o.y)}
+  if(m==="br"){w=Math.max(min,Math.min(1-o.x,p.x)-o.x);hg=Math.max(min,Math.min(1-o.y,p.y)-o.y)}
+  cropDraft={x,y,w,h:hg};updateCropEditor()
+ });
+ h.addEventListener("pointerup",()=>cropPointer=null);
+});
 
 /* Minimal PDF writer.
    Images are embedded as their original JPEG/PNG byte streams.
@@ -234,7 +285,7 @@ async function createPDF(pages){
           " /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length "+data.length+" >>\nstream\n"),
           data,bytes("\nendstream")
         ]));
-        imgsForPage.push({id,w:sz.w,h:sz.h,it});
+        imgsForPage.push({id,w:sz.w,h:sz.h,it,crop:it.crop||{x:0,y:0,w:1,h:1}});
       }else{
         // Convert non-JPEG images to PNG-free RGB JPEG at source resolution.
         // This branch is used mainly for PNG/WebP/browser formats.
@@ -248,16 +299,18 @@ async function createPDF(pages){
           " /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length "+d.length+" >>\nstream\n"),
           d,bytes("\nendstream")
         ]));
-        imgsForPage.push({id,w:sz.w,h:sz.h,it});
+        imgsForPage.push({id,w:sz.w,h:sz.h,it,crop:it.crop||{x:0,y:0,w:1,h:1}});
       }
     }
 
     let content="";
     imgsForPage.forEach((im,n)=>{
-      // PDF page coordinate: bottom-left origin. Convert mm to points.
+      const c=im.crop;
       const x=im.it.x*72/25.4,y=(297-im.it.y-im.it.h)*72/25.4;
       const w=im.it.w*72/25.4,h=im.it.h*72/25.4;
-      content+=`q ${w.toFixed(4)} 0 0 ${h.toFixed(4)} ${x.toFixed(4)} ${y.toFixed(4)} cm /Im${n} Do Q\n`;
+      const sw=im.w*c.w,sh=im.h*c.h;
+      const a=w/sw,d=h/sh,e=x-a*(im.w*c.x),f=y+h+d*(im.h*c.y);
+      content+=`q ${w.toFixed(4)} 0 0 ${h.toFixed(4)} ${x.toFixed(4)} ${y.toFixed(4)} re W n ${a.toFixed(6)} 0 0 ${d.toFixed(6)} ${e.toFixed(4)} ${f.toFixed(4)} cm /Im${n} Do Q\\n`;
     });
     const contentId=add(concat([
       bytes(`<< /Length ${bytes(content).length} >>\nstream\n`),bytes(content),bytes("endstream")
