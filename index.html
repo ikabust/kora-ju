@@ -8,7 +8,6 @@
 <meta name="theme-color" content="#9a7165">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/png" href="icon.png">
-<link rel="apple-touch-icon" href="./icon-192.png?v=20261001-02">
 
 <title>推しスクショ A4プリンター</title>
 
@@ -300,8 +299,8 @@ body.delete-mode .rotate-button{
   }
 
   .page{
-    width:297mm;
-    height:210mm;
+    width:210mm;
+    height:297mm;
 
     margin:0;
     box-shadow:none;
@@ -327,7 +326,7 @@ body.delete-mode .rotate-button{
 
 <header>
   <h1>📸 推しスクショ A4プリンター</h1>
-  <p>スクショを追加すると、自動でA4に並べます</p>
+  <p>スクショを追加すると、自動でA4に並べます　<span style="opacity:.75">v1.4.0</span></p>
 </header>
 
 <div class="controls">
@@ -1699,8 +1698,11 @@ pdfButton.addEventListener(
   // PWAの更新を受け取りやすくする
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./sw.js?v=20261001-02')
-        .catch(err => console.log('Service Worker:', err));
+      navigator.serviceWorker.register('./sw.js?v=1.4.0', {updateViaCache: 'none'})
+        .then(registration => {
+        registration.update();
+      })
+      .catch(err => console.log('Service Worker:', err));
     });
   }
 </script>
