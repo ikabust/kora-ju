@@ -24,6 +24,10 @@ body {
     sans-serif;
 }
 
+/* =========================
+   ヘッダー
+========================= */
+
 header {
   background: #8f675b;
   color: white;
@@ -39,6 +43,10 @@ header p {
   margin: 6px 0 0;
   font-size: 13px;
 }
+
+/* =========================
+   操作エリア
+========================= */
 
 .controls {
   padding: 18px;
@@ -68,18 +76,25 @@ button {
 
 button:hover,
 .file-label:hover {
-  opacity: 0.8;
+  opacity: 0.82;
 }
 
 input[type="file"] {
   display: none;
 }
 
+/* =========================
+   設定
+========================= */
+
 .settings {
-  padding: 0 18px 15px;
+  padding: 0 18px 12px;
+
   display: flex;
   flex-wrap: wrap;
+
   gap: 15px;
+
   font-size: 13px;
 }
 
@@ -91,20 +106,33 @@ input[type="file"] {
 
 .settings input {
   width: 65px;
-  padding: 6px;
+
+  padding: 6px 7px;
+
   border: 1px solid #d8cbc6;
+
   border-radius: 7px;
+
+  background: white;
 }
 
+/* =========================
+   情報
+========================= */
+
 .info {
-  padding: 0 18px 5px;
+  padding: 0 18px 4px;
+
   font-size: 13px;
+
   color: #786862;
 }
 
 .save-status {
   padding: 0 18px 15px;
+
   font-size: 12px;
+
   color: #8f675b;
 }
 
@@ -133,7 +161,7 @@ input[type="file"] {
 }
 
 /* =========================
-   配置画像
+   画像
 ========================= */
 
 .item {
@@ -141,14 +169,14 @@ input[type="file"] {
 
   overflow: hidden;
 
-  /*
-   * 長押しできることが分かるように
-   * 選択を禁止
-   */
   user-select: none;
   -webkit-user-select: none;
 
   cursor: pointer;
+
+  transition:
+    opacity 0.12s,
+    transform 0.12s;
 }
 
 .item img {
@@ -169,7 +197,84 @@ input[type="file"] {
 
 .item.long-pressing {
   opacity: 0.55;
+
   transform: scale(0.96);
+}
+
+/* =========================
+   削除確認モーダル
+========================= */
+
+.delete-modal {
+  position: fixed;
+
+  inset: 0;
+
+  z-index: 9999;
+
+  display: none;
+
+  align-items: center;
+  justify-content: center;
+
+  background: rgba(50, 40, 35, 0.35);
+
+  padding: 20px;
+}
+
+.delete-modal.show {
+  display: flex;
+}
+
+.delete-box {
+  width: min(360px, 100%);
+
+  background: white;
+
+  border-radius: 18px;
+
+  padding: 24px;
+
+  box-shadow:
+    0 10px 40px rgba(0,0,0,0.2);
+
+  text-align: center;
+}
+
+.delete-box-title {
+  font-size: 17px;
+
+  font-weight: bold;
+
+  margin-bottom: 8px;
+}
+
+.delete-box-text {
+  font-size: 13px;
+
+  color: #786862;
+
+  margin-bottom: 20px;
+}
+
+.delete-actions {
+  display: flex;
+
+  gap: 10px;
+}
+
+.delete-actions button {
+  flex: 1;
+}
+
+.cancel-delete {
+  background: #eee6e2;
+}
+
+.confirm-delete {
+  background: #8f675b;
+
+  color: white;
 }
 
 /* =========================
@@ -196,6 +301,7 @@ input[type="file"] {
 
   .page {
     margin: 0;
+
     box-shadow: none;
 
     page-break-after: always;
@@ -214,19 +320,20 @@ input[type="file"] {
 }
 
 /* =========================
-   小さい画面
+   PC画面でA4が大きすぎる場合
 ========================= */
 
-@media screen and (max-width: 1000px) {
+@media screen and (max-width: 1100px) {
 
   .page {
     transform-origin: top left;
+
     transform: scale(0.65);
 
     margin-bottom: -70mm;
+
     margin-left: 0;
   }
-
 }
 </style>
 </head>
@@ -242,7 +349,10 @@ input[type="file"] {
 
 <div class="controls">
 
+  <!-- 画像追加 -->
+
   <label class="file-label">
+
     📷 スクショを追加
 
     <input
@@ -251,18 +361,18 @@ input[type="file"] {
       accept="image/*"
       multiple
     >
+
   </label>
 
 
-  <button id="layoutButton">
-    🖼️ A4に敷き詰める
-  </button>
-
+  <!-- PDF -->
 
   <button id="pdfButton">
     🖨️ PDF出力
   </button>
 
+
+  <!-- 全削除 -->
 
   <button id="clearButton">
     🗑️ 全部削除
@@ -275,6 +385,7 @@ input[type="file"] {
 
   <label>
     基本の高さ
+
     <input
       id="heightInput"
       type="number"
@@ -283,12 +394,14 @@ input[type="file"] {
       max="10"
       step="0.1"
     >
+
     cm
   </label>
 
 
   <label>
     画像のすき間
+
     <input
       id="gapInput"
       type="number"
@@ -297,12 +410,14 @@ input[type="file"] {
       max="3"
       step="0.1"
     >
+
     cm
   </label>
 
 
   <label>
     A4の余白
+
     <input
       id="marginInput"
       type="number"
@@ -311,6 +426,7 @@ input[type="file"] {
       max="3"
       step="0.1"
     >
+
     cm
   </label>
 
@@ -330,23 +446,67 @@ input[type="file"] {
 <div id="preview"></div>
 
 
+<!-- =========================
+     削除確認
+========================= -->
+
+<div
+  id="deleteModal"
+  class="delete-modal"
+>
+
+  <div class="delete-box">
+
+    <div class="delete-box-title">
+      この画像を削除する？
+    </div>
+
+    <div class="delete-box-text">
+      この画像だけ削除します。
+    </div>
+
+    <div class="delete-actions">
+
+      <button
+        id="cancelDelete"
+        class="cancel-delete"
+      >
+        キャンセル
+      </button>
+
+      <button
+        id="confirmDelete"
+        class="confirm-delete"
+      >
+        削除する
+      </button>
+
+    </div>
+
+  </div>
+
+</div>
+
+
 <script>
 
 /* =====================================================
    IndexedDB
 ===================================================== */
 
-const DB_NAME = "oshiScreenshotPrinter";
+const DB_NAME =
+  "oshiScreenshotPrinter";
 
 const DB_VERSION = 1;
 
-const STORE_NAME = "images";
+const STORE_NAME =
+  "images";
 
 let db;
 
 
 /* =====================================================
-   DBを開く
+   IndexedDBを開く
 ===================================================== */
 
 function openDatabase() {
@@ -409,7 +569,7 @@ function openDatabase() {
 
 
 /* =====================================================
-   DBから全部取得
+   DB：全部取得
 ===================================================== */
 
 function getAllImages() {
@@ -452,7 +612,7 @@ function getAllImages() {
 
 
 /* =====================================================
-   画像保存
+   DB：画像保存
 ===================================================== */
 
 function saveImage(blob, name) {
@@ -473,9 +633,13 @@ function saveImage(blob, name) {
 
     const request =
       store.add({
+
         blob: blob,
+
         name: name,
+
         created: Date.now()
+
       });
 
 
@@ -500,7 +664,7 @@ function saveImage(blob, name) {
 
 
 /* =====================================================
-   画像削除
+   DB：画像削除
 ===================================================== */
 
 function deleteImage(id) {
@@ -544,7 +708,7 @@ function deleteImage(id) {
 
 
 /* =====================================================
-   全削除
+   DB：全部削除
 ===================================================== */
 
 function clearDatabase() {
@@ -592,41 +756,82 @@ function clearDatabase() {
 ===================================================== */
 
 const fileInput =
-  document.getElementById("fileInput");
+  document.getElementById(
+    "fileInput"
+  );
 
 const preview =
-  document.getElementById("preview");
+  document.getElementById(
+    "preview"
+  );
 
 const info =
-  document.getElementById("info");
+  document.getElementById(
+    "info"
+  );
 
 const saveStatus =
-  document.getElementById("saveStatus");
-
-const layoutButton =
-  document.getElementById("layoutButton");
+  document.getElementById(
+    "saveStatus"
+  );
 
 const pdfButton =
-  document.getElementById("pdfButton");
+  document.getElementById(
+    "pdfButton"
+  );
 
 const clearButton =
-  document.getElementById("clearButton");
+  document.getElementById(
+    "clearButton"
+  );
 
 const heightInput =
-  document.getElementById("heightInput");
+  document.getElementById(
+    "heightInput"
+  );
 
 const gapInput =
-  document.getElementById("gapInput");
+  document.getElementById(
+    "gapInput"
+  );
 
 const marginInput =
-  document.getElementById("marginInput");
+  document.getElementById(
+    "marginInput"
+  );
 
+const deleteModal =
+  document.getElementById(
+    "deleteModal"
+  );
+
+const cancelDelete =
+  document.getElementById(
+    "cancelDelete"
+  );
+
+const confirmDelete =
+  document.getElementById(
+    "confirmDelete"
+  );
+
+
+/* =====================================================
+   データ
+===================================================== */
 
 let images = [];
 
 
+/*
+ * 現在削除確認中の画像
+ */
+
+let pendingDeleteId = null;
+
+
 /* =====================================================
-   DBから読み込み
+   DBから画像読み込み
 ===================================================== */
 
 async function loadImages() {
@@ -635,14 +840,24 @@ async function loadImages() {
     await getAllImages();
 
 
+  /*
+   * 追加した順番を維持
+   */
+
   images.sort(
     function(a, b) {
+
       return a.id - b.id;
+
     }
   );
 
 
-  buildLayout();
+  /*
+   * 自動配置
+   */
+
+  await buildLayout();
 
 
   if (images.length > 0) {
@@ -669,7 +884,9 @@ fileInput.addEventListener(
   async function(event) {
 
     const files =
-      Array.from(event.target.files);
+      Array.from(
+        event.target.files
+      );
 
 
     if (files.length === 0) {
@@ -683,14 +900,24 @@ fileInput.addEventListener(
 
     try {
 
-      for (const file of files) {
+      for (
+        const file of files
+      ) {
 
         if (
-          !file.type.startsWith("image/")
+          !file.type.startsWith(
+            "image/"
+          )
         ) {
+
           continue;
+
         }
 
+
+        /*
+         * File / Blobそのものを保存
+         */
 
         await saveImage(
           file,
@@ -699,6 +926,10 @@ fileInput.addEventListener(
 
       }
 
+
+      /*
+       * 保存後に再読み込み
+       */
 
       await loadImages();
 
@@ -711,6 +942,9 @@ fileInput.addEventListener(
 
       console.error(error);
 
+      saveStatus.textContent =
+        "保存に失敗しました";
+
       alert(
         "画像の保存に失敗しました。"
       );
@@ -719,7 +953,7 @@ fileInput.addEventListener(
 
 
     /*
-     * 同じファイルをもう一度選べるようにする
+     * 同じ画像を再度選択できるようにする
      */
 
     fileInput.value = "";
@@ -729,10 +963,10 @@ fileInput.addEventListener(
 
 
 /* =====================================================
-   A4自動配置
+   A4レイアウト作成
 ===================================================== */
 
-function buildLayout() {
+async function buildLayout() {
 
   preview.innerHTML = "";
 
@@ -749,8 +983,6 @@ function buildLayout() {
 
   /*
    * A4横
-   *
-   * 297 × 210 mm
    */
 
   const A4_WIDTH = 297;
@@ -763,146 +995,104 @@ function buildLayout() {
    */
 
   const targetHeight =
-    Number(heightInput.value) * 10;
+    Number(
+      heightInput.value
+    ) * 10;
 
   const gap =
-    Number(gapInput.value) * 10;
+    Number(
+      gapInput.value
+    ) * 10;
 
   const margin =
-    Number(marginInput.value) * 10;
-
-
-  const usableWidth =
-    A4_WIDTH - margin * 2;
-
-  const usableHeight =
-    A4_HEIGHT - margin * 2;
-
-
-  const pages = [];
-
-  let currentPage = [];
-
-  let x = margin;
-
-  let y = margin;
-
-  let rowHeight = 0;
+    Number(
+      marginInput.value
+    ) * 10;
 
 
   /*
-   * 選択した順番で配置
+   * 画像の実寸比率を取得
    */
 
-  for (const image of images) {
+  const measuredImages =
+    await Promise.all(
 
-    /*
-     * 画像を読み込んで
-     * 元の縦横比を取得
-     */
+      images.map(
+        function(item) {
 
-    const ratio =
-      image.blob.type
-        ? null
-        : null;
+          return new Promise(
+            function(resolve) {
 
+              const url =
+                URL.createObjectURL(
+                  item.blob
+                );
 
-    /*
-     * ここでは画像そのものから
-     * 比率を取得する
-     */
-
-    const objectURL =
-      URL.createObjectURL(
-        image.blob
-      );
+              const img =
+                new Image();
 
 
-    /*
-     * 同期的にレイアウトするため
-     * 一旦デフォルト比率。
-     *
-     * 実際の比率は画像ロード時に
-     * 作り直す。
-     */
+              img.onload =
+                function() {
 
-    currentPage.push({
-      image: image,
-      src: objectURL
-    });
-
-  }
+                  const ratio =
+                    img.naturalWidth /
+                    img.naturalHeight;
 
 
-  /*
-   * 非同期で実寸を取得
-   */
-
-  Promise.all(
-    currentPage.map(function(item) {
-
-      return new Promise(function(resolve) {
-
-        const img =
-          new Image();
+                  URL.revokeObjectURL(
+                    url
+                  );
 
 
-        img.onload =
-          function() {
+                  resolve({
 
-            item.ratio =
-              img.naturalWidth /
-              img.naturalHeight;
+                    item: item,
 
+                    ratio: ratio
 
-            URL.revokeObjectURL(
-              item.src
-            );
+                  });
 
-            resolve();
-
-          };
+                };
 
 
-        img.src = item.src;
+              img.onerror =
+                function() {
 
-      });
+                  URL.revokeObjectURL(
+                    url
+                  );
 
-    })
-  ).then(function() {
 
-    renderPages(
-      createLayout(
-        currentPage,
-        A4_WIDTH,
-        A4_HEIGHT,
-        targetHeight,
-        gap,
-        margin,
-        usableWidth,
-        usableHeight
+                  /*
+                   * 万一読み込めなかった場合
+                   */
+
+                  resolve({
+
+                    item: item,
+
+                    ratio: 1
+
+                  });
+
+                };
+
+
+              img.src = url;
+
+            }
+          );
+
+        }
       )
+
     );
 
-  });
 
-}
-
-
-/* =====================================================
-   レイアウト計算
-===================================================== */
-
-function createLayout(
-  source,
-  A4_WIDTH,
-  A4_HEIGHT,
-  targetHeight,
-  gap,
-  margin,
-  usableWidth,
-  usableHeight
-) {
+  /*
+   * ページごとに画像を振り分ける
+   */
 
   const pages = [];
 
@@ -915,98 +1105,128 @@ function createLayout(
   let rowHeight = 0;
 
 
-  source.forEach(function(item) {
+  measuredImages.forEach(
+    function(data) {
 
-    let h =
-      targetHeight;
+      let h =
+        targetHeight;
 
-    let w =
-      h * item.ratio;
-
-
-    /*
-     * A4幅より大きい画像だけ
-     * 縮小
-     */
-
-    if (w > usableWidth) {
-
-      w = usableWidth;
-
-      h = w / item.ratio;
-
-    }
+      let w =
+        h * data.ratio;
 
 
-    /*
-     * 横に入らなければ
-     * 次の段へ
-     */
+      /*
+       * 横幅がA4の使用可能幅を超える場合だけ
+       * その画像だけ縮小
+       */
 
-    if (
-      x !== margin &&
-      x + w > A4_WIDTH - margin
-    ) {
-
-      x = margin;
-
-      y += rowHeight + gap;
-
-      rowHeight = 0;
-
-    }
+      const usableWidth =
+        A4_WIDTH - margin * 2;
 
 
-    /*
-     * 下に入らなければ
-     * 次のページへ
-     */
+      if (w > usableWidth) {
 
-    if (
-      y + h > A4_HEIGHT - margin
-    ) {
+        w = usableWidth;
 
-      if (page.length > 0) {
-
-        pages.push(page);
+        h =
+          w / data.ratio;
 
       }
 
 
-      page = [];
+      /*
+       * 横に入らない
+       * ↓
+       * 次の段
+       */
 
-      x = margin;
+      if (
+        x !== margin &&
+        x + w >
+          A4_WIDTH - margin
+      ) {
 
-      y = margin;
+        x = margin;
 
-      rowHeight = 0;
+        y +=
+          rowHeight + gap;
+
+        rowHeight = 0;
+
+      }
+
+
+      /*
+       * 縦に入らない
+       * ↓
+       * 次のページ
+       */
+
+      if (
+        y + h >
+          A4_HEIGHT - margin
+      ) {
+
+        if (
+          page.length > 0
+        ) {
+
+          pages.push(page);
+
+        }
+
+
+        page = [];
+
+        x = margin;
+
+        y = margin;
+
+        rowHeight = 0;
+
+      }
+
+
+      /*
+       * 配置情報
+       */
+
+      page.push({
+
+        image: data.item,
+
+        x: x,
+
+        y: y,
+
+        width: w,
+
+        height: h
+
+      });
+
+
+      /*
+       * 次の画像位置
+       */
+
+      x +=
+        w + gap;
+
+
+      rowHeight =
+        Math.max(
+          rowHeight,
+          h
+        );
 
     }
+  );
 
 
-    page.push({
-
-      image: item.image,
-
-      x: x,
-      y: y,
-
-      width: w,
-      height: h
-
-    });
-
-
-    x += w + gap;
-
-    rowHeight =
-      Math.max(
-        rowHeight,
-        h
-      );
-
-  });
-
+  /*
+   * 最後のページ
+   */
 
   if (page.length > 0) {
 
@@ -1015,7 +1235,11 @@ function createLayout(
   }
 
 
-  return pages;
+  /*
+   * 描画
+   */
+
+  renderPages(pages);
 
 }
 
@@ -1029,70 +1253,99 @@ function renderPages(pages) {
   preview.innerHTML = "";
 
 
-  pages.forEach(function(pageItems) {
+  pages.forEach(
+    function(pageItems) {
 
-    const page =
-      document.createElement("div");
-
-    page.className =
-      "page";
-
-
-    pageItems.forEach(function(item) {
-
-      const box =
-        document.createElement("div");
-
-      box.className =
-        "item";
-
-
-      box.style.left =
-        item.x + "mm";
-
-      box.style.top =
-        item.y + "mm";
-
-      box.style.width =
-        item.width + "mm";
-
-      box.style.height =
-        item.height + "mm";
-
-
-      const img =
-        document.createElement("img");
-
-
-      const url =
-        URL.createObjectURL(
-          item.image.blob
+      const page =
+        document.createElement(
+          "div"
         );
 
-
-      img.src = url;
-
-
-      box.appendChild(img);
-
-      page.appendChild(box);
+      page.className =
+        "page";
 
 
-      /*
-       * 長押し削除
-       */
+      pageItems.forEach(
+        function(item) {
 
-      setupLongPress(
-        box,
-        item.image
+          const box =
+            document.createElement(
+              "div"
+            );
+
+          box.className =
+            "item";
+
+
+          box.style.left =
+            item.x + "mm";
+
+          box.style.top =
+            item.y + "mm";
+
+          box.style.width =
+            item.width + "mm";
+
+          box.style.height =
+            item.height + "mm";
+
+
+          /*
+           * Blob URL
+           */
+
+          const url =
+            URL.createObjectURL(
+              item.image.blob
+            );
+
+
+          const img =
+            document.createElement(
+              "img"
+            );
+
+
+          img.src = url;
+
+
+          /*
+           * ページから消えたらURL解放
+           */
+
+          img.onload =
+            function() {
+
+              /*
+               * 印刷時に必要なので
+               * すぐには解放しない
+               */
+
+            };
+
+
+          box.appendChild(img);
+
+          page.appendChild(box);
+
+
+          /*
+           * 長押し削除
+           */
+
+          setupLongPress(
+            box,
+            item.image.id
+          );
+
+        }
       );
 
-    });
 
+      preview.appendChild(page);
 
-    preview.appendChild(page);
-
-  });
+    }
+  );
 
 
   info.textContent =
@@ -1110,17 +1363,22 @@ function renderPages(pages) {
 
 function setupLongPress(
   element,
-  image
+  imageId
 ) {
 
   let timer = null;
 
-  let longPressed = false;
+  let cancelled = false;
 
 
-  function start() {
+  /*
+   * 長押し開始
+   */
 
-    longPressed = false;
+  function startPress() {
+
+    cancelled = false;
+
 
     element.classList.add(
       "long-pressing"
@@ -1129,49 +1387,26 @@ function setupLongPress(
 
     timer =
       setTimeout(
-        async function() {
+        function() {
 
-          longPressed = true;
+          if (cancelled) {
+            return;
+          }
+
 
           element.classList.remove(
             "long-pressing"
           );
 
 
-          const ok =
-            confirm(
-              "この画像を削除しますか？"
-            );
+          /*
+           * 削除確認を表示
+           */
 
+          openDeleteModal(
+            imageId
+          );
 
-          if (!ok) {
-            return;
-          }
-
-
-          try {
-
-            await deleteImage(
-              image.id
-            );
-
-
-            await loadImages();
-
-
-            saveStatus.textContent =
-              "画像を削除しました";
-
-
-          } catch(error) {
-
-            console.error(error);
-
-            alert(
-              "削除できませんでした"
-            );
-
-          }
 
         },
         650
@@ -1180,15 +1415,23 @@ function setupLongPress(
   }
 
 
-  function cancel() {
+  /*
+   * 長押し終了
+   */
 
-    if (timer) {
+  function endPress() {
+
+    cancelled = true;
+
+
+    if (timer !== null) {
 
       clearTimeout(timer);
 
       timer = null;
 
     }
+
 
     element.classList.remove(
       "long-pressing"
@@ -1205,11 +1448,16 @@ function setupLongPress(
     "mousedown",
     function(event) {
 
-      if (event.button !== 0) {
+      if (
+        event.button !== 0
+      ) {
+
         return;
+
       }
 
-      start();
+
+      startPress();
 
     }
   );
@@ -1217,13 +1465,13 @@ function setupLongPress(
 
   element.addEventListener(
     "mouseup",
-    cancel
+    endPress
   );
 
 
   element.addEventListener(
     "mouseleave",
-    cancel
+    endPress
   );
 
 
@@ -1237,25 +1485,155 @@ function setupLongPress(
 
       event.preventDefault();
 
-      start();
+      startPress();
 
     },
-    { passive: false }
+    {
+      passive: false
+    }
   );
 
 
   element.addEventListener(
     "touchend",
-    cancel
+    function() {
+
+      endPress();
+
+    }
   );
 
 
   element.addEventListener(
     "touchcancel",
-    cancel
+    function() {
+
+      endPress();
+
+    }
   );
 
 }
+
+
+/* =====================================================
+   削除確認を表示
+===================================================== */
+
+function openDeleteModal(
+  imageId
+) {
+
+  pendingDeleteId =
+    imageId;
+
+
+  deleteModal.classList.add(
+    "show"
+  );
+
+}
+
+
+/* =====================================================
+   削除確認を閉じる
+===================================================== */
+
+function closeDeleteModal() {
+
+  pendingDeleteId =
+    null;
+
+
+  deleteModal.classList.remove(
+    "show"
+  );
+
+}
+
+
+/* =====================================================
+   キャンセル
+===================================================== */
+
+cancelDelete.addEventListener(
+  "click",
+  function() {
+
+    closeDeleteModal();
+
+  }
+);
+
+
+/* =====================================================
+   削除する
+===================================================== */
+
+confirmDelete.addEventListener(
+  "click",
+  async function() {
+
+    if (
+      pendingDeleteId === null
+    ) {
+
+      return;
+
+    }
+
+
+    const id =
+      pendingDeleteId;
+
+
+    closeDeleteModal();
+
+
+    try {
+
+      await deleteImage(id);
+
+      await loadImages();
+
+
+      saveStatus.textContent =
+        "✓ 画像を削除しました";
+
+
+    } catch(error) {
+
+      console.error(error);
+
+      alert(
+        "画像を削除できませんでした"
+      );
+
+    }
+
+  }
+);
+
+
+/* =====================================================
+   モーダルの外側をクリック
+===================================================== */
+
+deleteModal.addEventListener(
+  "click",
+  function(event) {
+
+    if (
+      event.target ===
+      deleteModal
+    ) {
+
+      closeDeleteModal();
+
+    }
+
+  }
+);
 
 
 /* =====================================================
@@ -1279,22 +1657,12 @@ marginInput.addEventListener(
 
 
 /* =====================================================
-   A4配置ボタン
-===================================================== */
-
-layoutButton.addEventListener(
-  "click",
-  buildLayout
-);
-
-
-/* =====================================================
-   PDF
+   PDF出力
 ===================================================== */
 
 pdfButton.addEventListener(
   "click",
-  function() {
+  async function() {
 
     if (images.length === 0) {
 
@@ -1308,11 +1676,15 @@ pdfButton.addEventListener(
 
 
     /*
-     * 最新レイアウトを表示してから印刷
+     * 最新状態にする
      */
 
-    buildLayout();
+    await buildLayout();
 
+
+    /*
+     * 画像の描画が終わってから印刷
+     */
 
     setTimeout(
       function() {
@@ -1320,7 +1692,7 @@ pdfButton.addEventListener(
         window.print();
 
       },
-      300
+      500
     );
 
   }
@@ -1336,18 +1708,27 @@ clearButton.addEventListener(
   async function() {
 
     if (images.length === 0) {
+
       return;
+
     }
 
 
+    /*
+     * confirm()は使わない
+     * 今回は全削除だけ別確認。
+     */
+
     const ok =
-      confirm(
-        "保存されている画像を全部削除しますか？"
+      window.prompt(
+        "全部削除する場合は「削除」と入力してください"
       );
 
 
-    if (!ok) {
+    if (ok !== "削除") {
+
       return;
+
     }
 
 
@@ -1357,8 +1738,10 @@ clearButton.addEventListener(
 
       await loadImages();
 
+
       saveStatus.textContent =
-        "画像をすべて削除しました";
+        "✓ すべて削除しました";
+
 
     } catch(error) {
 
