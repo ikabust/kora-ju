@@ -14,6 +14,15 @@ const deleteModeMessage=document.getElementById("deleteModeMessage");
 
 let images=[];
 let deleteMode=false;
+let replaceTarget=null;
+let longPressTimer=null;
+let longPressTriggered=false;
+
+const replaceFileInput=document.createElement("input");
+replaceFileInput.type="file";
+replaceFileInput.accept="image/*";
+replaceFileInput.style.display="none";
+document.body.appendChild(replaceFileInput);
 
 function getImageRatio(blob){
   return new Promise((resolve,reject)=>{
@@ -221,6 +230,11 @@ function renderPages(pages){
       }
 
       item.onclick=e=>{
+        if(longPressTriggered){
+          longPressTriggered=false;
+          return;
+        }
+
         if(e.target===rotateButton||!deleteMode)return;
 
         const index=images.findIndex(x=>x===image);
@@ -243,7 +257,76 @@ function renderPages(pages){
   info.textContent=`${images.length}枚 / A4 ${pages.length}ページ`;
 }
 
+async function replaceImage(target,file){
+  try{
+    const ratio=await getImageRatio(file);
+
+    target.blob=file;
+    target.name=file.name;
+    target._ratio=ratio;
+
+    // 新しい画像の向きに合わせて初期回転も設定。
+    target.rotation=ratio>1?90:0;
+
+    saveStatus.textContent="✓ 画像を入れ替えました";
+    await buildLayout();
+  }catch(err){
+    console.error(err);
+    saveStatus.textContent="⚠ 画像の入れ替えに失敗しました";
+  }
+}
+
+replaceFileInput.onchange=async()=>{
+  const file=replaceFileInput.files?.[0];
+
+  if(!file||!replaceTarget){
+    replaceFileInput.value="";
+    replaceTarget=null;
+    return;
+  }
+
+  const target=replaceTarget;
+  replaceTarget=null;
+  replaceFileInput.value="";
+
+  await replaceImage(target,file);
+};
+
 function setupDrag(item,target){
+  // スマホ：長押しで、その場所の画像だけ入れ替える。
+  const startLongPress=()=>{
+    if(deleteMode)return;
+
+    longPressTriggered=false;
+
+    clearTimeout(longPressTimer);
+    longPressTimer=setTimeout(()=>{
+      longPressTriggered=true;
+      replaceTarget=target;
+      saveStatus.textContent="入れ替える画像を選択してください";
+      replaceFileInput.click();
+    },600);
+  };
+
+  const cancelLongPress=()=>{
+    clearTimeout(longPressTimer);
+  };
+
+  item.addEventListener("touchstart",startLongPress,{passive:true});
+  item.addEventListener("touchend",cancelLongPress,{passive:true});
+  item.addEventListener("touchmove",cancelLongPress,{passive:true});
+  item.addEventListener("touchcancel",cancelLongPress,{passive:true});
+
+  // PCでも右クリックではなく長押し相当の操作をしやすくするため、
+  // マウス長押しにも対応。
+  item.addEventListener("mousedown",e=>{
+    if(e.button!==0||deleteMode)return;
+    startLongPress();
+  });
+
+  item.addEventListener("mouseup",cancelLongPress);
+  item.addEventListener("mouseleave",cancelLongPress);
+
   item.ondragstart=e=>{
     if(deleteMode){
       e.preventDefault();

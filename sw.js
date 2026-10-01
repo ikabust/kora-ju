@@ -1,4 +1,4 @@
-const APP_VERSION="1.4.8";
+const APP_VERSION="1.4.9";
 const CACHE_NAME=`oshi-screenshot-printer-${APP_VERSION}`;
 
 const APP_SHELL=[
