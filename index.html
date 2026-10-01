@@ -9,8 +9,7 @@
 *{box-sizing:border-box}
 body{margin:0;background:#f7f2ef;color:#4b3b36;font-family:-apple-system,BlinkMacSystemFont,"Noto Sans JP",sans-serif}
 header{background:#9a7165;color:white;padding:18px 16px 16px;position:sticky;top:0;z-index:5;box-shadow:0 2px 8px #0001}
-h1{font-size:20px;margin:0 0 4px}
-.sub{font-size:12px;opacity:.9}
+h1{font-size:20px;margin:0 0 4px}.sub{font-size:12px;opacity:.9}
 .controls{padding:14px 12px;display:flex;flex-wrap:wrap;gap:8px}
 button,.fileBtn,select{border:0;border-radius:12px;padding:11px 14px;background:white;color:#5a4640;box-shadow:0 1px 5px #0001;font-size:14px}
 button.primary,.fileBtn{background:#9a7165;color:white;font-weight:600}
@@ -20,20 +19,17 @@ input[type=file]{display:none}
 .settings label{background:white;border-radius:12px;padding:8px 10px;box-shadow:0 1px 4px #0001}
 .settings input{width:45px;border:0;border-bottom:1px solid #baa49d;text-align:center;font-size:13px}
 .info{padding:4px 14px 12px;font-size:12px;color:#806d66}
-.pages{padding:0 10px 30px}
-.pageWrap{margin:0 auto 24px;max-width:850px}
+.pages{padding:0 10px 30px}.pageWrap{margin:0 auto 24px;max-width:850px}
 .pageTitle{font-size:13px;margin:0 0 7px 4px;font-weight:600}
 .page{position:relative;background:white;width:100%;aspect-ratio:210/297;box-shadow:0 3px 15px #0002;overflow:hidden}
-.item{position:absolute;overflow:hidden;background:#eee;cursor:grab}
-.item img{width:100%;height:100%;object-fit:fill;display:block}
-.item.selected{outline:2px solid #9a7165;outline-offset:-2px}
+.item{position:absolute;overflow:hidden;background:#eee}.item img{width:100%;height:100%;display:block}
 .empty{padding:40px 20px;text-align:center;color:#a08e87;font-size:14px}
-.help{padding:0 14px 20px;font-size:12px;color:#806d66;line-height:1.7}
+.note{padding:0 14px 20px;font-size:12px;color:#806d66;line-height:1.7}
+#status{padding:0 14px 12px;font-size:12px;color:#7d5c50}
 @media print{
  body{background:white}
- header,.controls,.settings,.info,.help,.pageTitle{display:none!important}
- .pages{padding:0}
- .pageWrap{margin:0;width:210mm;height:297mm;max-width:none;page-break-after:always}
+ header,.controls,.settings,.info,.note,#status,.pageTitle{display:none!important}
+ .pages{padding:0}.pageWrap{margin:0;width:210mm;height:297mm;max-width:none;page-break-after:always}
  .page{width:210mm;height:297mm;box-shadow:none}
 }
 </style>
@@ -41,14 +37,13 @@ input[type=file]{display:none}
 <body>
 <header>
 <h1>推しスクショ A4プリンター</h1>
-<div class="sub">選ぶだけで、比率を変えずにA4へ自動配置 ♡</div>
+<div class="sub">比率そのまま・自動配置・高画質PDF ♡</div>
 </header>
 
 <div class="controls">
-<label class="fileBtn">スクショを選ぶ
-<input id="files" type="file" accept="image/*" multiple>
-</label>
+<label class="fileBtn">スクショを選ぶ<input id="files" type="file" accept="image/*" multiple></label>
 <button class="primary" id="auto">A4に自動配置</button>
+<button class="primary" id="pdf">高画質PDFを作る</button>
 <button id="print">印刷する</button>
 <button id="clear">全部消す</button>
 </div>
@@ -66,12 +61,15 @@ input[type=file]{display:none}
 </div>
 
 <div class="info" id="info">まだ画像がありません</div>
+<div id="status"></div>
 <div class="pages" id="pages">
 <div class="empty">スクショを選んでね<br>何枚でもOK。A4を超えたら自動で2枚目へ送ります。</div>
 </div>
-<div class="help">
-※ 画像はこの端末のブラウザ内だけで処理します。サーバーへアップロードしません。<br>
-※ 印刷画面では「用紙サイズ：A4」「倍率：100%」を選ぶと、A4サイズで出力できます。
+<div class="note">
+<b>PDFについて</b><br>
+「高画質PDFを作る」では、元画像をキャンバスに描き直したりJPEGへ再圧縮したりせず、元画像データをPDFへ直接配置します。<br>
+そのため、アプリ画面のスクショをPDFにする方式より画質を保ちやすい設計です。<br>
+※PDFの仕様上、画像の実ファイルサイズ・プリンター・PDFビューアなどによって最終的な見え方は変わります。
 </div>
 
 <script>
@@ -84,135 +82,207 @@ $("files").addEventListener("change",e=>{
   files.forEach((f,i)=>{
     const u=URL.createObjectURL(f);
     const im=new Image();
-    im.onload=()=>{imgs.push({src:u,w:im.naturalWidth,h:im.naturalHeight,ratio:im.naturalWidth/im.naturalHeight,name:f.name,idx:i}); render();};
+    im.onload=()=>{
+      imgs.push({src:u,w:im.naturalWidth,h:im.naturalHeight,ratio:im.naturalWidth/im.naturalHeight,name:f.name,idx:i,file:f});
+      imgs.sort((a,b)=>a.idx-b.idx);
+      render();
+    };
     im.src=u;
   });
 });
-
-$("gap").addEventListener("change",render);
-$("margin").addEventListener("change",render);
-$("order").addEventListener("change",render);
+["gap","margin","order"].forEach(id=>$(id).addEventListener("change",render));
 $("auto").addEventListener("click",render);
 $("print").addEventListener("click",()=>window.print());
+$("pdf").addEventListener("click",makePDF);
 $("clear").addEventListener("click",()=>{
   imgs.forEach(x=>URL.revokeObjectURL(x.src));
   imgs=[];$("files").value="";render();
 });
 
 function sorted(){
-  let a=[...imgs];
-  const mode=$("order").value;
-  if(mode==="size") a.sort((x,y)=>(y.w*y.h)-(x.w*x.h));
-  if(mode==="tall") a.sort((x,y)=>y.h/x.w-x.h/x.w);
+  let a=[...imgs],mode=$("order").value;
+  if(mode==="size")a.sort((x,y)=>(y.w*y.h)-(x.w*x.h));
+  if(mode==="tall")a.sort((x,y)=>y.h/x.w-x.h/x.w);
   return a;
 }
 
-/*
-  A4 is represented as 210 x 297 mm.
-  We use a simple row-based shelf packer. Each image keeps its original ratio.
-  Rows are built by testing a common height; images are scaled down until the
-  row fits. No rectangles can overlap because every row gets its own y range.
-*/
-function layoutPage(list, W=210,H=297,margin=5,gap=3){
-  const usableW=W-margin*2, usableH=H-margin*2;
-  let placed=[], y=margin, i=0;
-
+/* A4: 210 x 297 mm. Shelf packing; every image retains its original ratio. */
+function layoutPage(list,W=210,H=297,margin=5,gap=3){
+  const usableW=W-margin*2,usableH=H-margin*2;
+  let placed=[],y=margin,i=0;
   while(i<list.length){
     const remaining=usableH-(y-margin);
-    if(remaining<=1) break;
-
-    // Start a row with as many images as practical.
-    let row=list.slice(i);
+    if(remaining<=1)break;
     let chosen=null;
-
-    for(let count=1; count<=row.length; count++){
-      const rs=row.slice(0,count);
-      // Fit the row into remaining vertical space and width.
-      // For a common row height t, total width=sum(ratio*t)+gaps.
+    for(let count=1;count<=list.length-i;count++){
+      const rs=list.slice(i,i+count);
       const sumR=rs.reduce((s,x)=>s+x.ratio,0);
-      const maxByW=(usableW-gap*(count-1))/sumR;
-      const t=Math.min(maxByW, remaining);
+      const t=Math.min((usableW-gap*(count-1))/sumR,remaining);
       if(t>0){
+        if(t<12)break;
         chosen={rs,t};
-        // Prefer adding another image while the row remains reasonably useful.
-        if(t<12) {
-          const trimmed=rs.slice(0,-1);
-          if(trimmed.length){
-            const trimmedSum=trimmed.reduce((s,x)=>s+x.ratio,0);
-            const trimmedT=Math.min((usableW-gap*(trimmed.length-1))/trimmedSum, remaining);
-            chosen={rs:trimmed,t:trimmedT};
-          } else {
-            chosen={rs:[],t:0};
-          }
-          break;
-        }
       }
     }
-
-    if(!chosen || !chosen.rs.length) break;
-    const rs=chosen.rs, t=chosen.t;
+    if(!chosen){
+      const x=list[i];
+      const t=Math.min(usableW/x.ratio,remaining);
+      chosen={rs:[x],t};
+    }
     let x=margin;
-    rs.forEach(item=>{
-      const w=item.ratio*t;
-      placed.push({...item,x,y,w,h:t});
+    chosen.rs.forEach(item=>{
+      const w=item.ratio*chosen.t;
+      placed.push({...item,x,y,w,h:chosen.t});
       x+=w+gap;
     });
-    y+=t+gap;
-    i+=rs.length;
+    y+=chosen.t+gap;i+=chosen.rs.length;
   }
   return {placed,next:i};
 }
 
+function buildLayouts(){
+  const gap=Number($("gap").value)||0,margin=Number($("margin").value)||0;
+  let pool=sorted(),pages=[],guard=0;
+  while(pool.length&&guard++<100){
+    const r=layoutPage(pool,210,297,margin,gap);
+    if(!r.placed.length)break;
+    pages.push(r.placed);pool=pool.slice(r.next);
+  }
+  return pages;
+}
+
 function render(){
-  const root=$("pages");
-  root.innerHTML="";
+  const root=$("pages");root.innerHTML="";
   if(!imgs.length){
     root.innerHTML='<div class="empty">スクショを選んでね<br>何枚でもOK。A4を超えたら自動で2枚目へ送ります。</div>';
-    $("info").textContent="まだ画像がありません";
-    return;
+    $("info").textContent="まだ画像がありません";return;
   }
-
-  const gap=Number($("gap").value)||0;
-  const margin=Number($("margin").value)||0;
-  let pool=sorted(), pages=[], safety=0;
-
-  while(pool.length && safety++<100){
-    const result=layoutPage(pool,210,297,margin,gap);
-    if(!result.placed.length){
-      // Extremely large minimum: force one image on a page.
-      const x=pool.shift();
-      const usableW=210-margin*2, usableH=297-margin*2;
-      const t=Math.min(usableW/x.ratio,usableH);
-      pages.push([{...x,x:margin,y:margin,w:x.ratio*t,h:t}]);
-    }else{
-      pages.push(result.placed);
-      pool=pool.slice(result.next);
-    }
-  }
-
+  const pages=buildLayouts();
   pages.forEach((items,p)=>{
-    const wrap=document.createElement("div");
-    wrap.className="pageWrap";
+    const wrap=document.createElement("div");wrap.className="pageWrap";
     wrap.innerHTML=`<div class="pageTitle">A4 ${p+1}ページ目　${items.length}枚</div>`;
-    const page=document.createElement("div");
-    page.className="page";
+    const page=document.createElement("div");page.className="page";
     items.forEach(it=>{
-      const d=document.createElement("div");
-      d.className="item";
-      d.style.left=(it.x/210*100)+"%";
-      d.style.top=(it.y/297*100)+"%";
-      d.style.width=(it.w/210*100)+"%";
-      d.style.height=(it.h/297*100)+"%";
-      const im=document.createElement("img");
-      im.src=it.src;
-      im.alt=it.name;
-      d.appendChild(im);
-      page.appendChild(d);
+      const d=document.createElement("div");d.className="item";
+      d.style.left=it.x/210*100+"%";d.style.top=it.y/297*100+"%";
+      d.style.width=it.w/210*100+"%";d.style.height=it.h/297*100+"%";
+      const im=document.createElement("img");im.src=it.src;im.alt=it.name;
+      d.appendChild(im);page.appendChild(d);
     });
     wrap.appendChild(page);root.appendChild(wrap);
   });
   $("info").textContent=`${imgs.length}枚 → A4 ${pages.length}ページに自動配置`;
 }
+
+/* Minimal PDF writer.
+   Images are embedded as their original JPEG/PNG byte streams.
+   JPEG is inserted directly as DCTDecode. PNG is decoded only when needed
+   because PDF needs raw image samples for general PNG files. */
+async function makePDF(){
+  if(!imgs.length){alert("先にスクショを選んでね");return;}
+  const status=$("status");status.textContent="PDFを作成中…";
+  try{
+    const pages=buildLayouts();
+    const pdf=await createPDF(pages);
+    const blob=new Blob([pdf],{type:"application/pdf"});
+    const a=document.createElement("a");
+    a.href=URL.createObjectURL(blob);
+    a.download="推しスクショ_A4.pdf";
+    document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(a.href),3000);
+    status.textContent="PDFを作ったよ！「推しスクショ_A4.pdf」を保存してね。";
+  }catch(e){
+    console.error(e);status.textContent="PDF作成でエラーが発生しました。";
+    alert("PDFを作れませんでした。画像形式によってはブラウザの制限があります。");
+  }
+}
+
+function esc(s){return String(s).replace(/\\/g,"\\\\").replace(/\(/g,"\\(").replace(/\)/g,"\\)");}
+function bytes(s){return new TextEncoder().encode(s);}
+function concat(arrs){
+  let n=arrs.reduce((s,a)=>s+a.length,0),out=new Uint8Array(n),p=0;
+  arrs.forEach(a=>{out.set(a,p);p+=a.length});return out;
+}
+async function fileBytes(f){return new Uint8Array(await f.arrayBuffer());}
+function findJPEGSize(b){
+  for(let i=2;i<b.length-9;){
+    if(b[i]!==0xff){i++;continue}
+    let marker=b[i+1];
+    if(marker===0xd8||marker===0xd9){i+=2;continue}
+    if(i+4>=b.length)break;
+    let len=(b[i+2]<<8)|b[i+3];
+    if(marker>=0xc0&&marker<=0xc3)return {h:(b[i+5]<<8)|b[i+6],w:(b[i+7]<<8)|b[i+8]};
+    i+=2+len;
+  }
+  return null;
+}
+function pdfObj(id,body){return concat([bytes(id+" 0 obj\n"),body,bytes("\nendobj\n")]);}
+
+async function createPDF(pages){
+  const objects=[],offsets=[0],imageObjs=[];
+  const add=(b)=>{objects.push(b);return objects.length;};
+  const catalogId=add(null),pagesId=add(null);
+
+  for(const pageItems of pages){
+    const imgsForPage=[];
+    for(const it of pageItems){
+      const data=await fileBytes(it.file);
+      const type=(it.file.type||"").toLowerCase();
+      if(type==="image/jpeg"||type==="image/jpg"){
+        const sz=findJPEGSize(data)||{w:it.w*3.78,h:it.h*3.78};
+        const id=add(concat([
+          bytes("<< /Type /XObject /Subtype /Image /Width "+sz.w+" /Height "+sz.h+
+          " /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length "+data.length+" >>\nstream\n"),
+          data,bytes("\nendstream")
+        ]));
+        imgsForPage.push({id,w:sz.w,h:sz.h,it});
+      }else{
+        // Convert non-JPEG images to PNG-free RGB JPEG at source resolution.
+        // This branch is used mainly for PNG/WebP/browser formats.
+        const bmp=await createImageBitmap(it.file);
+        const c=document.createElement("canvas");c.width=bmp.width;c.height=bmp.height;
+        const ctx=c.getContext("2d");ctx.drawImage(bmp,0,0);bmp.close();
+        const blob=await new Promise(r=>c.toBlob(r,"image/jpeg",1.0));
+        const d=await fileBytes(blob),sz={w:c.width,h:c.height};
+        const id=add(concat([
+          bytes("<< /Type /XObject /Subtype /Image /Width "+sz.w+" /Height "+sz.h+
+          " /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length "+d.length+" >>\nstream\n"),
+          d,bytes("\nendstream")
+        ]));
+        imgsForPage.push({id,w:sz.w,h:sz.h,it});
+      }
+    }
+
+    let content="";
+    imgsForPage.forEach((im,n)=>{
+      // PDF page coordinate: bottom-left origin. Convert mm to points.
+      const x=im.it.x*72/25.4,y=(297-im.it.y-im.it.h)*72/25.4;
+      const w=im.it.w*72/25.4,h=im.it.h*72/25.4;
+      content+=`q ${w.toFixed(4)} 0 0 ${h.toFixed(4)} ${x.toFixed(4)} ${y.toFixed(4)} cm /Im${n} Do Q\n`;
+    });
+    const contentId=add(concat([
+      bytes(`<< /Length ${bytes(content).length} >>\nstream\n`),bytes(content),bytes("endstream")
+    ]));
+    const resources="<< /XObject << "+imgsForPage.map((x,n)=>`/Im${n} ${x.id} 0 R`).join(" ")+" >> >>";
+    const pageId=add(bytes(`<< /Type /Page /Parent ${pagesId} 0 R /MediaBox [0 0 595.2756 841.8898] /Resources ${resources} /Contents ${contentId} 0 R >>`));
+    imageObjs.push(pageId);
+  }
+
+  objects[catalogId-1]=bytes(`<< /Type /Catalog /Pages ${pagesId} 0 R >>`);
+  objects[pagesId-1]=bytes(`<< /Type /Pages /Kids [${imageObjs.map(id=>id+" 0 R").join(" ")}] /Count ${imageObjs.length} >>`);
+
+  let chunks=[bytes("%PDF-1.4\n%\xFF\xFF\xFF\xFF\n")],pos=chunks[0].length;
+  for(let i=0;i<objects.length;i++){
+    offsets[i+1]=pos;
+    const o=pdfObj(i+1,objects[i]);chunks.push(o);pos+=o.length;
+  }
+  const xref=pos;
+  let table=`xref\n0 ${objects.length+1}\n0000000000 65535 f \n`;
+  for(let i=1;i<=objects.length;i++)table+=String(offsets[i]).padStart(10,"0")+" 00000 n \n";
+  chunks.push(bytes(table+`trailer\n<< /Size ${objects.length+1} /Root ${catalogId} 0 R >>\nstartxref\n${xref}\n%%EOF`));
+  return concat(chunks);
+}
+
+render();
 </script>
 </body>
 </html>
