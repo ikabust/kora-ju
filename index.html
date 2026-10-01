@@ -90,6 +90,38 @@ input[type="file"] {
 }
 
 /* =========================
+   削除モード
+========================= */
+
+#deleteModeButton.active {
+  background: #8f675b;
+  color: white;
+
+  box-shadow:
+    0 0 0 3px rgba(143,103,91,0.2);
+}
+
+.delete-mode-message {
+  display: none;
+
+  margin: 0 18px 15px;
+
+  padding: 10px 14px;
+
+  border-radius: 10px;
+
+  background: #f0dfd9;
+
+  color: #76534a;
+
+  font-size: 13px;
+}
+
+.delete-mode-message.show {
+  display: block;
+}
+
+/* =========================
    設定
 ========================= */
 
@@ -120,6 +152,8 @@ input[type="file"] {
   border: 1px solid #d8cbc6;
 
   border-radius: 7px;
+
+  background: white;
 }
 
 /* =========================
@@ -173,7 +207,7 @@ input[type="file"] {
 .item {
   position: absolute;
 
-  overflow: hidden;
+  overflow: visible;
 
   cursor: grab;
 
@@ -201,17 +235,19 @@ input[type="file"] {
 
   user-select: none;
   -webkit-user-select: none;
+
+  border-radius: 2px;
 }
 
-/* ドラッグ中 */
+/* =========================
+   ドラッグ
+========================= */
 
 .item.dragging {
   opacity: 0.45;
 
   transform: scale(0.95);
 }
-
-/* ドロップ先 */
 
 .item.drag-over {
   outline: 3px solid #8f675b;
@@ -222,89 +258,52 @@ input[type="file"] {
 }
 
 /* =========================
-   長押し中
+   削除モード中
 ========================= */
 
-.item.long-pressing {
-  opacity: 0.55;
-
-  transform: scale(0.96);
+body.delete-mode .item {
+  cursor: pointer;
 }
 
-/* =========================
-   削除モーダル
-========================= */
+body.delete-mode .item img {
+  opacity: 0.72;
 
-.delete-modal {
-  position: fixed;
+  outline: 2px dashed #a56f63;
 
-  inset: 0;
+  outline-offset: -2px;
+}
 
-  z-index: 9999;
-
+.delete-mark {
   display: none;
 
-  align-items: center;
-  justify-content: center;
+  position: absolute;
 
-  background: rgba(50,40,35,0.35);
+  top: -8px;
+  right: -8px;
 
-  padding: 20px;
-}
+  width: 28px;
+  height: 28px;
 
-.delete-modal.show {
-  display: flex;
-}
+  border-radius: 50%;
 
-.delete-box {
-  width: min(360px, 100%);
-
-  background: white;
-
-  border-radius: 18px;
-
-  padding: 24px;
-
-  box-shadow:
-    0 10px 40px rgba(0,0,0,0.2);
-
-  text-align: center;
-}
-
-.delete-title {
-  font-size: 17px;
-
-  font-weight: bold;
-
-  margin-bottom: 8px;
-}
-
-.delete-text {
-  font-size: 13px;
-
-  color: #786862;
-
-  margin-bottom: 20px;
-}
-
-.delete-actions {
-  display: flex;
-
-  gap: 10px;
-}
-
-.delete-actions button {
-  flex: 1;
-}
-
-.cancel-delete {
-  background: #eee6e2;
-}
-
-.confirm-delete {
   background: #8f675b;
 
   color: white;
+
+  font-size: 20px;
+
+  line-height: 27px;
+
+  text-align: center;
+
+  box-shadow:
+    0 2px 7px rgba(0,0,0,0.2);
+
+  pointer-events: none;
+}
+
+body.delete-mode .delete-mark {
+  display: block;
 }
 
 /* =========================
@@ -321,7 +320,9 @@ input[type="file"] {
   .controls,
   .settings,
   .info,
-  .save-status {
+  .save-status,
+  .delete-mode-message,
+  .delete-mark {
     display: none !important;
   }
 
@@ -413,12 +414,27 @@ input[type="file"] {
   </button>
 
 
+  <!-- 削除モード -->
+
+  <button id="deleteModeButton">
+    🗑️ 削除モード
+  </button>
+
+
   <!-- 全削除 -->
 
   <button id="clearButton">
-    🗑️ 全部削除
+    全部削除
   </button>
 
+</div>
+
+
+<div
+  id="deleteModeMessage"
+  class="delete-mode-message"
+>
+  🗑️ 削除モード中：消したい画像をクリックしてください
 </div>
 
 
@@ -499,48 +515,6 @@ input[type="file"] {
 <div id="preview"></div>
 
 
-<!-- =========================
-     削除確認
-========================= -->
-
-<div
-  id="deleteModal"
-  class="delete-modal"
->
-
-  <div class="delete-box">
-
-    <div class="delete-title">
-      この画像を削除する？
-    </div>
-
-    <div class="delete-text">
-      この画像だけ削除します。
-    </div>
-
-    <div class="delete-actions">
-
-      <button
-        id="cancelDelete"
-        class="cancel-delete"
-      >
-        キャンセル
-      </button>
-
-      <button
-        id="confirmDelete"
-        class="confirm-delete"
-      >
-        削除する
-      </button>
-
-    </div>
-
-  </div>
-
-</div>
-
-
 <script>
 
 /* =====================================================
@@ -550,7 +524,7 @@ input[type="file"] {
 const DB_NAME =
   "oshiScreenshotPrinter";
 
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 const STORE_NAME =
   "images";
@@ -614,7 +588,9 @@ function openDatabase() {
       request.onerror =
         function() {
 
-          reject(request.error);
+          reject(
+            request.error
+          );
 
         };
 
@@ -706,7 +682,8 @@ function saveImage(
 
           created: Date.now(),
 
-          order: Date.now() +
+          order:
+            Date.now() +
             Math.random()
 
         });
@@ -834,13 +811,24 @@ function clearDatabase() {
 
 
 /* =====================================================
-   順番を保存
+   順番保存
 ===================================================== */
 
 function saveOrder() {
 
   return new Promise(
     function(resolve, reject) {
+
+      if (
+        images.length === 0
+      ) {
+
+        resolve();
+
+        return;
+
+      }
+
 
       const transaction =
         db.transaction(
@@ -855,15 +843,6 @@ function saveOrder() {
 
 
       let completed = 0;
-
-
-      if (images.length === 0) {
-
-        resolve();
-
-        return;
-
-      }
 
 
       images.forEach(
@@ -941,6 +920,11 @@ const pdfButton =
     "pdfButton"
   );
 
+const deleteModeButton =
+  document.getElementById(
+    "deleteModeButton"
+  );
+
 const clearButton =
   document.getElementById(
     "clearButton"
@@ -961,35 +945,23 @@ const marginInput =
     "marginInput"
   );
 
-const deleteModal =
+const deleteModeMessage =
   document.getElementById(
-    "deleteModal"
+    "deleteModeMessage"
   );
-
-const cancelDelete =
-  document.getElementById(
-    "cancelDelete"
-  );
-
-const confirmDelete =
-  document.getElementById(
-    "confirmDelete"
-  );
-
-
-let images = [];
-
-
-/*
- * 削除確認中の画像
- */
-
-let pendingDeleteId =
-  null;
 
 
 /* =====================================================
-   DBから読み込み
+   状態
+===================================================== */
+
+let images = [];
+
+let deleteMode = false;
+
+
+/* =====================================================
+   DB読み込み
 ===================================================== */
 
 async function loadImages() {
@@ -999,7 +971,7 @@ async function loadImages() {
 
 
   /*
-   * 保存されている順番
+   * 並び順を維持
    */
 
   images.sort(
@@ -1017,7 +989,9 @@ async function loadImages() {
   await buildLayout();
 
 
-  if (images.length > 0) {
+  if (
+    images.length > 0
+  ) {
 
     saveStatus.textContent =
       "✓ 自動保存されています";
@@ -1102,7 +1076,7 @@ fileInput.addEventListener(
 
 
     /*
-     * 同じファイルを再選択可能にする
+     * 同じファイルを再選択可能
      */
 
     fileInput.value = "";
@@ -1154,7 +1128,7 @@ async function buildLayout() {
 
 
   /*
-   * 画像の縦横比取得
+   * 元画像の比率取得
    */
 
   const measured =
@@ -1250,14 +1224,14 @@ async function buildLayout() {
         h * data.ratio;
 
 
-      /*
-       * 横幅がA4より大きい場合だけ縮小
-       */
-
       const usableWidth =
         A4_WIDTH -
         margin * 2;
 
+
+      /*
+       * 幅がA4を超える画像だけ縮小
+       */
 
       if (
         w > usableWidth
@@ -1272,8 +1246,7 @@ async function buildLayout() {
 
 
       /*
-       * 横に入らない
-       * → 次の段
+       * 横に入らなければ次の段
        */
 
       if (
@@ -1293,8 +1266,7 @@ async function buildLayout() {
 
 
       /*
-       * 下に入らない
-       * → 次のページ
+       * 下に入らなければ次ページ
        */
 
       if (
@@ -1399,12 +1371,13 @@ function renderPages(
           box.className =
             "item";
 
-          box.draggable =
-            true;
-
 
           box.dataset.id =
             item.image.id;
+
+
+          box.draggable =
+            !deleteMode;
 
 
           box.style.left =
@@ -1434,7 +1407,80 @@ function renderPages(
 
           box.appendChild(img);
 
+
+          /*
+           * 削除マーク
+           */
+
+          const deleteMark =
+            document.createElement(
+              "div"
+            );
+
+          deleteMark.className =
+            "delete-mark";
+
+          deleteMark.textContent =
+            "×";
+
+
+          box.appendChild(
+            deleteMark
+          );
+
+
           page.appendChild(box);
+
+
+          /*
+           * 削除モード
+           */
+
+          box.addEventListener(
+            "click",
+            async function(event) {
+
+              if (
+                !deleteMode
+              ) {
+
+                return;
+
+              }
+
+
+              event.preventDefault();
+
+              event.stopPropagation();
+
+
+              const id =
+                Number(
+                  box.dataset.id
+                );
+
+
+              try {
+
+                await deleteImage(id);
+
+                await loadImages();
+
+
+                saveStatus.textContent =
+                  "✓ 画像を削除しました";
+
+              } catch(error) {
+
+                console.error(error);
+
+                saveStatus.textContent =
+                  "削除に失敗しました";
+
+              }
+
+            }
+          );
 
 
           /*
@@ -1442,16 +1488,6 @@ function renderPages(
            */
 
           setupDrag(
-            box,
-            item.image.id
-          );
-
-
-          /*
-           * 長押し削除
-           */
-
-          setupLongPress(
             box,
             item.image.id
           );
@@ -1488,6 +1524,17 @@ function setupDrag(
     "dragstart",
     function(event) {
 
+      if (
+        deleteMode
+      ) {
+
+        event.preventDefault();
+
+        return;
+
+      }
+
+
       element.classList.add(
         "dragging"
       );
@@ -1509,6 +1556,7 @@ function setupDrag(
       element.classList.remove(
         "dragging"
       );
+
 
       document
         .querySelectorAll(
@@ -1532,7 +1580,17 @@ function setupDrag(
     "dragover",
     function(event) {
 
+      if (
+        deleteMode
+      ) {
+
+        return;
+
+      }
+
+
       event.preventDefault();
+
 
       element.classList.add(
         "drag-over"
@@ -1558,7 +1616,17 @@ function setupDrag(
     "drop",
     async function(event) {
 
+      if (
+        deleteMode
+      ) {
+
+        return;
+
+      }
+
+
       event.preventDefault();
+
 
       element.classList.remove(
         "drag-over"
@@ -1585,10 +1653,6 @@ function setupDrag(
 
       }
 
-
-      /*
-       * 現在位置
-       */
 
       const fromIndex =
         images.findIndex(
@@ -1621,7 +1685,7 @@ function setupDrag(
 
 
       /*
-       * 順番を入れ替える
+       * 順番を移動
        */
 
       const moved =
@@ -1637,10 +1701,6 @@ function setupDrag(
         moved
       );
 
-
-      /*
-       * 順番を保存
-       */
 
       try {
 
@@ -1658,10 +1718,6 @@ function setupDrag(
       }
 
 
-      /*
-       * A4も再配置
-       */
-
       await buildLayout();
 
     }
@@ -1671,259 +1727,54 @@ function setupDrag(
 
 
 /* =====================================================
-   長押し削除
+   削除モードON/OFF
 ===================================================== */
 
-function setupLongPress(
-  element,
-  id
-) {
-
-  let timer = null;
-
-  let cancelled = false;
-
-
-  function startPress() {
-
-    cancelled = false;
-
-
-    element.classList.add(
-      "long-pressing"
-    );
-
-
-    timer =
-      setTimeout(
-        function() {
-
-          if (cancelled) {
-
-            return;
-
-          }
-
-
-          element.classList.remove(
-            "long-pressing"
-          );
-
-
-          openDeleteModal(id);
-
-        },
-        650
-      );
-
-  }
-
-
-  function endPress() {
-
-    cancelled = true;
-
-
-    if (
-      timer !== null
-    ) {
-
-      clearTimeout(timer);
-
-      timer = null;
-
-    }
-
-
-    element.classList.remove(
-      "long-pressing"
-    );
-
-  }
-
-
-  /*
-   * PC
-   */
-
-  element.addEventListener(
-    "mousedown",
-    function(event) {
-
-      if (
-        event.button !== 0
-      ) {
-
-        return;
-
-      }
-
-
-      startPress();
-
-    }
-  );
-
-
-  element.addEventListener(
-    "mouseup",
-    endPress
-  );
-
-
-  element.addEventListener(
-    "mouseleave",
-    endPress
-  );
-
-
-  /*
-   * スマホ
-   */
-
-  element.addEventListener(
-    "touchstart",
-    function(event) {
-
-      event.preventDefault();
-
-      startPress();
-
-    },
-    {
-      passive: false
-    }
-  );
-
-
-  element.addEventListener(
-    "touchend",
-    endPress
-  );
-
-
-  element.addEventListener(
-    "touchcancel",
-    endPress
-  );
-
-}
-
-
-/* =====================================================
-   削除モーダル
-===================================================== */
-
-function openDeleteModal(
-  id
-) {
-
-  pendingDeleteId =
-    id;
-
-
-  deleteModal.classList.add(
-    "show"
-  );
-
-}
-
-
-/* =====================================================
-   モーダルを閉じる
-===================================================== */
-
-function closeDeleteModal() {
-
-  pendingDeleteId =
-    null;
-
-
-  deleteModal.classList.remove(
-    "show"
-  );
-
-}
-
-
-/* =====================================================
-   キャンセル
-===================================================== */
-
-cancelDelete.addEventListener(
-  "click",
-  function() {
-
-    closeDeleteModal();
-
-  }
-);
-
-
-/* =====================================================
-   削除実行
-===================================================== */
-
-confirmDelete.addEventListener(
+deleteModeButton.addEventListener(
   "click",
   async function() {
 
+    deleteMode =
+      !deleteMode;
+
+
+    deleteModeButton.classList.toggle(
+      "active",
+      deleteMode
+    );
+
+
+    deleteModeMessage.classList.toggle(
+      "show",
+      deleteMode
+    );
+
+
+    document.body.classList.toggle(
+      "delete-mode",
+      deleteMode
+    );
+
+
+    /*
+     * 削除モードに入ったら
+     * ドラッグを無効化
+     */
+
+    await buildLayout();
+
+
     if (
-      pendingDeleteId === null
+      deleteMode
     ) {
-
-      return;
-
-    }
-
-
-    const id =
-      pendingDeleteId;
-
-
-    closeDeleteModal();
-
-
-    try {
-
-      await deleteImage(id);
-
-
-      await loadImages();
-
 
       saveStatus.textContent =
-        "✓ 画像を削除しました";
+        "削除モード中";
 
+    } else {
 
-    } catch(error) {
-
-      console.error(error);
-
-      alert(
-        "画像を削除できませんでした"
-      );
-
-    }
-
-  }
-);
-
-
-/* =====================================================
-   モーダル外側クリック
-===================================================== */
-
-deleteModal.addEventListener(
-  "click",
-  function(event) {
-
-    if (
-      event.target ===
-      deleteModal
-    ) {
-
-      closeDeleteModal();
+      saveStatus.textContent =
+        "通常モード";
 
     }
 
@@ -1972,6 +1823,25 @@ pdfButton.addEventListener(
     }
 
 
+    /*
+     * PDF出力時は削除モードを解除
+     */
+
+    deleteMode = false;
+
+    deleteModeButton.classList.remove(
+      "active"
+    );
+
+    deleteModeMessage.classList.remove(
+      "show"
+    );
+
+    document.body.classList.remove(
+      "delete-mode"
+    );
+
+
     await buildLayout();
 
 
@@ -2005,6 +1875,10 @@ clearButton.addEventListener(
     }
 
 
+    /*
+     * ブラウザ標準confirmは使わない
+     */
+
     const answer =
       prompt(
         "全部削除する場合は「削除」と入力してください"
@@ -2036,9 +1910,8 @@ clearButton.addEventListener(
 
       console.error(error);
 
-      alert(
-        "削除できませんでした"
-      );
+      saveStatus.textContent =
+        "削除に失敗しました";
 
     }
 
