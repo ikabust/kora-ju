@@ -9,40 +9,101 @@
 <title>推しスクショ A4プリンター</title>
 <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
+
 <header>
 <h1>📸 推しスクショ A4プリンター</h1>
-<!-- バージョン変更"v1.4.1 -->
-<p>スクショを追加すると、自動でA4に並べます　<span style="opacity:.75">v1.4.3</span></p>
+
+<p>
+スクショを追加すると、自動でA4に並べます　
+<span id="app-version" style="opacity:.75"></span>
+</p>
+
 </header>
 
 <div class="controls">
-<label class="file-label">📷 画像を追加<input id="fileInput" type="file" accept="image/*" multiple></label>
+<label class="file-label">
+📷 画像を追加
+<input id="fileInput" type="file" accept="image/*" multiple>
+</label>
+
 <button id="deleteModeButton">🗑️ 削除モード</button>
 <button id="clearButton">🗑️ 全部削除</button>
 <button id="pdfButton">📄 PDFに保存 / 印刷</button>
 </div>
 
 <div class="settings">
-<div class="setting"><label for="widthInput">画像の横幅</label><input id="widthInput" type="number" min="1" step="0.1" value="4.5"> cm</div>
-<div class="setting"><label for="gapInput">すき間</label><input id="gapInput" type="number" min="0" step="0.1" value="0.3"> cm</div>
-<div class="setting"><label for="marginInput">余白</label><input id="marginInput" type="number" min="0" step="0.1" value="0.5"> cm</div>
+
+<div class="setting">
+<label for="widthInput">画像の横幅</label>
+<input id="widthInput" type="number" min="1" step="0.1" value="4.5">
+cm
+</div>
+
+<div class="setting">
+<label for="gapInput">すき間</label>
+<input id="gapInput" type="number" min="0" step="0.1" value="0.3">
+cm
+</div>
+
+<div class="setting">
+<label for="marginInput">余白</label>
+<input id="marginInput" type="number" min="0" step="0.1" value="0.5">
+cm
+</div>
+
 </div>
 
 <div id="info" class="info"></div>
 <div id="saveStatus" class="save-status"></div>
-<div id="deleteModeMessage" class="delete-mode-message">🗑️ 削除モード中：消したい画像をクリックしてください</div>
-<div id="preview"><div class="empty">📷 画像を追加すると、ここにA4レイアウトが表示されます</div></div>
+
+<div id="deleteModeMessage" class="delete-mode-message">
+🗑️ 削除モード中：消したい画像をクリックしてください
+</div>
+
+<div id="preview">
+<div class="empty">
+📷 画像を追加すると、ここにA4レイアウトが表示されます
+</div>
+</div>
 
 <script src="script.js"></script>
 
 <script>
-if("serviceWorker" in navigator){
- window.addEventListener("load",()=>{
-    // バージョン変更"./sw.js?v=
-  navigator.serviceWorker.register("./sw.js?v=20261001-04-03",{updateViaCache:"none"}).catch(err=>console.log("Service Worker:",err)); 
- });
+/* =========================
+   アプリのバージョン
+   ★ここだけ変更する
+========================= */
+const APP_VERSION = "1.4.4";
+
+
+/* =========================
+   バージョン表示
+========================= */
+document.getElementById("app-version").textContent = `v${APP_VERSION}`;
+
+
+/* =========================
+   Service Worker
+========================= */
+if ("serviceWorker" in navigator) {
+
+  window.addEventListener("load", () => {
+
+    navigator.serviceWorker.register(
+      `./sw.js?v=${APP_VERSION}`,
+      {
+        updateViaCache: "none"
+      }
+    ).catch(err => {
+      console.log("Service Worker:", err);
+    });
+
+  });
+
 }
 </script>
+
 </body>
 </html>
