@@ -113,10 +113,22 @@ function renderPages(pages){
 
    const img=document.createElement("img"),url=URL.createObjectURL(im.blob);
    img.src=url;img.alt=im.name||"画像";
-   img.style.width=`${d.width}mm`;img.style.height=`${d.height}mm`;
-   img.style.position="absolute";img.style.left="50%";img.style.top="50%";
-   img.style.transformOrigin="center";img.style.transform=`translate(-50%,-50%) rotate(${im.rotation||0}deg)`;
+img.style.width=
+ `${d.width}mm`;
 
+img.style.height=
+ `${d.height}mm`;
+
+img.style.position="absolute";
+
+img.style.left="50%";
+img.style.top="50%";
+
+img.style.transformOrigin=
+ "center";
+
+img.style.transform=
+ `translate(-50%,-50%) rotate(${im.rotation||0}deg)`;
    const rb=document.createElement("button");rb.className="rotate-button";rb.type="button";rb.textContent="↻";
    rb.title=`回転：${im.rotation||0}°`;
    rb.onclick=async e=>{
