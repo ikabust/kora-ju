@@ -1,319 +1,285 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="utf-8">
+<meta name="viewport"
+      content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+
+<meta name="theme-color" content="#9a7165">
 
 <title>推しスクショ A4プリンター</title>
 
 <style>
-* {
-  box-sizing: border-box;
+:root{
+  --brown:#8f675b;
+  --brown-dark:#745247;
+  --bg:#f7f3f0;
+  --card:#fff;
+  --line:#dfd4cf;
+  --text:#4d403b;
 }
 
-body {
-  margin: 0;
-  background: #f7f3f1;
-  color: #4d403b;
+*{
+  box-sizing:border-box;
+}
+
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--text);
   font-family:
     -apple-system,
     BlinkMacSystemFont,
-    "Hiragino Kaku Gothic ProN",
+    "Noto Sans JP",
     "Yu Gothic",
-    Meiryo,
     sans-serif;
 }
 
-/* =========================
-   ヘッダー
-========================= */
-
-header {
-  background: #8f675b;
-  color: white;
-  padding: 20px;
+header{
+  padding:18px 20px;
+  background:var(--brown);
+  color:white;
 }
 
-header h1 {
-  margin: 0;
-  font-size: 22px;
+header h1{
+  margin:0;
+  font-size:20px;
 }
 
-header p {
-  margin: 6px 0 0;
-  font-size: 13px;
+header p{
+  margin:5px 0 0;
+  font-size:12px;
+  opacity:.9;
 }
 
-/* =========================
-   操作
-========================= */
-
-.controls {
-  padding: 18px;
-
-  display: flex;
-  flex-wrap: wrap;
-
-  gap: 10px;
+.controls{
+  padding:15px;
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  background:white;
+  border-bottom:1px solid var(--line);
 }
 
 button,
-.file-label {
-  border: none;
-
-  border-radius: 10px;
-
-  padding: 11px 16px;
-
-  font-size: 14px;
-
-  cursor: pointer;
-}
-
-.file-label {
-  background: #8f675b;
-  color: white;
-}
-
-button {
-  background: #d8c1b8;
-  color: #4d403b;
+.file-label{
+  border:0;
+  border-radius:10px;
+  padding:10px 14px;
+  background:var(--brown);
+  color:white;
+  font-size:14px;
+  cursor:pointer;
+  font-family:inherit;
 }
 
 button:hover,
-.file-label:hover {
-  opacity: 0.82;
+.file-label:hover{
+  background:var(--brown-dark);
 }
 
-input[type="file"] {
-  display: none;
+button:disabled{
+  opacity:.5;
+  cursor:default;
 }
 
-/* =========================
-   削除モード
-========================= */
-
-#deleteModeButton.active {
-  background: #8f675b;
-  color: white;
-
-  box-shadow:
-    0 0 0 3px rgba(143,103,91,0.2);
+#deleteModeButton.active{
+  background:#b94b4b;
 }
 
-.delete-mode-message {
-  display: none;
-
-  margin: 0 18px 15px;
-
-  padding: 10px 14px;
-
-  border-radius: 10px;
-
-  background: #f0dfd9;
-
-  color: #76534a;
-
-  font-size: 13px;
+#clearButton{
+  background:#8b6d65;
 }
 
-.delete-mode-message.show {
-  display: block;
+input[type=file]{
+  display:none;
 }
 
-/* =========================
-   設定
-========================= */
-
-.settings {
-  padding: 0 18px 12px;
-
-  display: flex;
-  flex-wrap: wrap;
-
-  gap: 15px;
-
-  font-size: 13px;
+.file-label{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
 }
 
-.settings label {
-  display: flex;
-
-  align-items: center;
-
-  gap: 6px;
+.settings{
+  display:flex;
+  flex-wrap:wrap;
+  gap:14px;
+  padding:12px 15px;
+  background:#fffaf7;
+  border-bottom:1px solid var(--line);
 }
 
-.settings input {
-  width: 65px;
-
-  padding: 6px;
-
-  border: 1px solid #d8cbc6;
-
-  border-radius: 7px;
-
-  background: white;
+.setting{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  font-size:13px;
 }
 
-/* =========================
-   情報
-========================= */
-
-.info {
-  padding: 0 18px 4px;
-
-  font-size: 13px;
-
-  color: #786862;
+.setting input{
+  width:65px;
+  padding:6px 7px;
+  border:1px solid var(--line);
+  border-radius:7px;
+  font-size:14px;
 }
 
-.save-status {
-  padding: 0 18px 15px;
-
-  font-size: 12px;
-
-  color: #8f675b;
+.info{
+  padding:10px 15px;
+  font-size:13px;
 }
 
-/* =========================
-   A4
-========================= */
-
-#preview {
-  padding: 20px;
+.save-status{
+  padding:0 15px 10px;
+  font-size:12px;
+  color:#8a7168;
 }
 
-.page {
-  position: relative;
-
-  width: 297mm;
-  height: 210mm;
-
-  margin: 0 auto 30px;
-
-  background: white;
-
-  box-shadow:
-    0 4px 20px rgba(0,0,0,0.12);
-
-  overflow: hidden;
+.delete-mode-message{
+  display:none;
+  margin:0 15px 12px;
+  padding:10px 12px;
+  border-radius:9px;
+  background:#fff0f0;
+  color:#a23e3e;
+  font-size:13px;
 }
 
-/* =========================
-   画像
-========================= */
-
-.item {
-  position: absolute;
-
-  overflow: visible;
-
-  cursor: grab;
-
-  user-select: none;
-  -webkit-user-select: none;
-
-  transition:
-    opacity 0.15s,
-    transform 0.15s;
+.delete-mode-message.show{
+  display:block;
 }
 
-.item:active {
-  cursor: grabbing;
+#preview{
+  padding:20px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:20px;
 }
 
-.item img {
-  display: block;
-
-  width: 100%;
-  height: 100%;
-
-  object-fit: contain;
-
-  pointer-events: none;
-
-  user-select: none;
-  -webkit-user-select: none;
-
-  border-radius: 2px;
+/* A4 */
+.page{
+  position:relative;
+  width:297mm;
+  height:210mm;
+  background:white;
+  box-shadow:0 2px 10px rgba(0,0,0,.12);
+  overflow:hidden;
 }
 
-/* =========================
-   ドラッグ
-========================= */
-
-.item.dragging {
-  opacity: 0.45;
-
-  transform: scale(0.95);
+/* 画像 */
+.item{
+  position:absolute;
+  background:#fff;
+  cursor:grab;
+  user-select:none;
 }
 
-.item.drag-over {
-  outline: 3px solid #8f675b;
-
-  outline-offset: 2px;
-
-  transform: scale(1.03);
+.item:active{
+  cursor:grabbing;
 }
 
-/* =========================
-   削除モード中
-========================= */
-
-body.delete-mode .item {
-  cursor: pointer;
+.item.drag-over{
+  outline:3px solid #9a7165;
+  outline-offset:2px;
 }
 
-body.delete-mode .item img {
-  opacity: 0.72;
-
-  outline: 2px dashed #a56f63;
-
-  outline-offset: -2px;
+.item img{
+  width:100%;
+  height:100%;
+  object-fit:fill;
+  display:block;
+  pointer-events:none;
 }
 
-.delete-mark {
-  display: none;
+/*
+  回転ボタン
+*/
+.rotate-button{
+  position:absolute;
+  top:4px;
+  right:4px;
+  z-index:5;
 
-  position: absolute;
+  width:28px;
+  height:28px;
+  padding:0;
 
-  top: -8px;
-  right: -8px;
+  border-radius:50%;
+  border:1px solid rgba(255,255,255,.9);
 
-  width: 28px;
-  height: 28px;
+  background:rgba(80,55,48,.78);
+  color:white;
 
-  border-radius: 50%;
+  font-size:17px;
+  line-height:28px;
+  text-align:center;
 
-  background: #8f675b;
+  cursor:pointer;
 
-  color: white;
-
-  font-size: 20px;
-
-  line-height: 27px;
-
-  text-align: center;
-
-  box-shadow:
-    0 2px 7px rgba(0,0,0,0.2);
-
-  pointer-events: none;
+  box-shadow:0 1px 4px rgba(0,0,0,.2);
 }
 
-body.delete-mode .delete-mark {
-  display: block;
+.rotate-button:hover{
+  background:rgba(80,55,48,.95);
 }
 
-/* =========================
-   印刷
-========================= */
+/*
+  削除モード
+*/
+.delete-mark{
+  position:absolute;
+  top:4px;
+  left:4px;
+  z-index:6;
 
-@media print {
+  width:28px;
+  height:28px;
 
-  body {
-    background: white;
+  border-radius:50%;
+  background:#c74747;
+  color:white;
+
+  font-size:20px;
+  line-height:26px;
+  text-align:center;
+
+  pointer-events:none;
+}
+
+body.delete-mode .item{
+  cursor:pointer;
+  outline:2px dashed rgba(199,71,71,.65);
+  outline-offset:-2px;
+}
+
+body.delete-mode .rotate-button{
+  display:none;
+}
+
+.empty{
+  padding:50px 20px;
+  text-align:center;
+  color:#9b8981;
+  font-size:14px;
+}
+
+/*
+  印刷
+*/
+@media print{
+
+  @page{
+    size:A4 landscape;
+    margin:0;
+  }
+
+  html,
+  body{
+    margin:0;
+    padding:0;
+    background:white;
   }
 
   header,
@@ -321,891 +287,608 @@ body.delete-mode .delete-mark {
   .settings,
   .info,
   .save-status,
-  .delete-mode-message,
-  .delete-mark {
-    display: none !important;
+  .delete-mode-message{
+    display:none !important;
   }
 
-  #preview {
-    padding: 0;
+  #preview{
+    display:block;
+    padding:0;
   }
 
-  .page {
-    margin: 0;
+  .page{
+    width:297mm;
+    height:210mm;
 
-    box-shadow: none;
+    margin:0;
+    box-shadow:none;
 
-    page-break-after: always;
-
-    break-after: page;
+    page-break-after:always;
+    break-after:page;
   }
 
-  .page:last-child {
-    page-break-after: auto;
-
-    break-after: auto;
+  .page:last-child{
+    page-break-after:auto;
+    break-after:auto;
   }
 
-  @page {
-    size: A4 landscape;
-
-    margin: 0;
+  .rotate-button,
+  .delete-mark{
+    display:none !important;
   }
-}
-
-/* =========================
-   小さい画面
-========================= */
-
-@media screen and (max-width: 1100px) {
-
-  .page {
-    transform-origin: top left;
-
-    transform: scale(0.65);
-
-    margin-bottom: -70mm;
-
-    margin-left: 0;
-  }
-
 }
 </style>
 </head>
 
-
 <body>
 
 <header>
-
-  <h1>
-    推しスクショ A4プリンター
-  </h1>
-
-  <p>
-    スクショを選んで、A4にかわいく敷き詰めよう♡
-  </p>
-
+  <h1>📸 推しスクショ A4プリンター</h1>
+  <p>スクショを追加すると、自動でA4に並べます</p>
 </header>
-
 
 <div class="controls">
 
-  <!-- 画像追加 -->
-
   <label class="file-label">
-
-    📷 スクショを追加
-
+    📷 画像を追加
     <input
       id="fileInput"
       type="file"
       accept="image/*"
       multiple
     >
-
   </label>
-
-
-  <!-- PDF -->
-
-  <button id="pdfButton">
-    🖨️ PDF出力
-  </button>
-
-
-  <!-- 削除モード -->
 
   <button id="deleteModeButton">
     🗑️ 削除モード
   </button>
 
-
-  <!-- 全削除 -->
-
   <button id="clearButton">
-    全部削除
+    🗑️ 全部削除
+  </button>
+
+  <button id="pdfButton">
+    📄 PDFに保存 / 印刷
   </button>
 
 </div>
 
-
-<div
-  id="deleteModeMessage"
-  class="delete-mode-message"
->
-  🗑️ 削除モード中：消したい画像をクリックしてください
-</div>
-
-
 <div class="settings">
 
-  <label>
-
-    基本の高さ
-
+  <div class="setting">
+    <label for="heightInput">画像の高さ</label>
     <input
       id="heightInput"
       type="number"
-      value="4.5"
       min="1"
-      max="10"
       step="0.1"
+      value="4.5"
     >
-
     cm
+  </div>
 
-  </label>
-
-
-  <label>
-
-    画像のすき間
-
+  <div class="setting">
+    <label for="gapInput">すき間</label>
     <input
       id="gapInput"
       type="number"
-      value="0.3"
       min="0"
-      max="3"
       step="0.1"
+      value="0.3"
     >
-
     cm
+  </div>
 
-  </label>
-
-
-  <label>
-
-    A4の余白
-
+  <div class="setting">
+    <label for="marginInput">余白</label>
     <input
       id="marginInput"
       type="number"
-      value="0.5"
       min="0"
-      max="3"
       step="0.1"
+      value="0.5"
     >
-
     cm
-
-  </label>
+  </div>
 
 </div>
 
+<div id="info" class="info"></div>
 
-<div
-  class="info"
-  id="info"
->
-  画像はまだありません
+<div id="saveStatus" class="save-status"></div>
+
+<div id="deleteModeMessage" class="delete-mode-message">
+  🗑️ 削除モード中：消したい画像をクリックしてください
 </div>
 
-
-<div
-  class="save-status"
-  id="saveStatus"
->
-  読み込み中…
+<div id="preview">
+  <div class="empty">
+    📷 画像を追加すると、ここにA4レイアウトが表示されます
+  </div>
 </div>
-
-
-<div id="preview"></div>
 
 
 <script>
 
-/* =====================================================
-   IndexedDB
-===================================================== */
+/* =========================================================
+   設定
+========================================================= */
 
-const DB_NAME =
-  "oshiScreenshotPrinter";
+const DB_NAME = "oshiScreenshotPrinter";
+const DB_VERSION = 4;
+const STORE_NAME = "images";
 
-const DB_VERSION = 3;
+const A4_WIDTH = 297;
+const A4_HEIGHT = 210;
 
-const STORE_NAME =
-  "images";
 
-let db;
-
-
-/* =====================================================
-   DBを開く
-===================================================== */
-
-function openDatabase() {
-
-  return new Promise(
-    function(resolve, reject) {
-
-      const request =
-        indexedDB.open(
-          DB_NAME,
-          DB_VERSION
-        );
-
-
-      request.onupgradeneeded =
-        function(event) {
-
-          const database =
-            event.target.result;
-
-
-          if (
-            !database.objectStoreNames.contains(
-              STORE_NAME
-            )
-          ) {
-
-            database.createObjectStore(
-              STORE_NAME,
-              {
-                keyPath: "id",
-                autoIncrement: true
-              }
-            );
-
-          }
-
-        };
-
-
-      request.onsuccess =
-        function(event) {
-
-          db =
-            event.target.result;
-
-          resolve(db);
-
-        };
-
-
-      request.onerror =
-        function() {
-
-          reject(
-            request.error
-          );
-
-        };
-
-    }
-  );
-
-}
-
-
-/* =====================================================
-   DBから全画像
-===================================================== */
-
-function getAllImages() {
-
-  return new Promise(
-    function(resolve, reject) {
-
-      const transaction =
-        db.transaction(
-          STORE_NAME,
-          "readonly"
-        );
-
-      const store =
-        transaction.objectStore(
-          STORE_NAME
-        );
-
-      const request =
-        store.getAll();
-
-
-      request.onsuccess =
-        function() {
-
-          resolve(
-            request.result
-          );
-
-        };
-
-
-      request.onerror =
-        function() {
-
-          reject(
-            request.error
-          );
-
-        };
-
-    }
-  );
-
-}
-
-
-/* =====================================================
-   画像保存
-===================================================== */
-
-function saveImage(
-  blob,
-  name
-) {
-
-  return new Promise(
-    function(resolve, reject) {
-
-      const transaction =
-        db.transaction(
-          STORE_NAME,
-          "readwrite"
-        );
-
-      const store =
-        transaction.objectStore(
-          STORE_NAME
-        );
-
-
-      const request =
-        store.add({
-
-          blob: blob,
-
-          name: name,
-
-          created: Date.now(),
-
-          order:
-            Date.now() +
-            Math.random()
-
-        });
-
-
-      request.onsuccess =
-        function() {
-
-          resolve(
-            request.result
-          );
-
-        };
-
-
-      request.onerror =
-        function() {
-
-          reject(
-            request.error
-          );
-
-        };
-
-    }
-  );
-
-}
-
-
-/* =====================================================
-   画像削除
-===================================================== */
-
-function deleteImage(id) {
-
-  return new Promise(
-    function(resolve, reject) {
-
-      const transaction =
-        db.transaction(
-          STORE_NAME,
-          "readwrite"
-        );
-
-      const store =
-        transaction.objectStore(
-          STORE_NAME
-        );
-
-
-      const request =
-        store.delete(id);
-
-
-      request.onsuccess =
-        function() {
-
-          resolve();
-
-        };
-
-
-      request.onerror =
-        function() {
-
-          reject(
-            request.error
-          );
-
-        };
-
-    }
-  );
-
-}
-
-
-/* =====================================================
-   全削除
-===================================================== */
-
-function clearDatabase() {
-
-  return new Promise(
-    function(resolve, reject) {
-
-      const transaction =
-        db.transaction(
-          STORE_NAME,
-          "readwrite"
-        );
-
-      const store =
-        transaction.objectStore(
-          STORE_NAME
-        );
-
-
-      const request =
-        store.clear();
-
-
-      request.onsuccess =
-        function() {
-
-          resolve();
-
-        };
-
-
-      request.onerror =
-        function() {
-
-          reject(
-            request.error
-          );
-
-        };
-
-    }
-  );
-
-}
-
-
-/* =====================================================
-   順番保存
-===================================================== */
-
-function saveOrder() {
-
-  return new Promise(
-    function(resolve, reject) {
-
-      if (
-        images.length === 0
-      ) {
-
-        resolve();
-
-        return;
-
-      }
-
-
-      const transaction =
-        db.transaction(
-          STORE_NAME,
-          "readwrite"
-        );
-
-      const store =
-        transaction.objectStore(
-          STORE_NAME
-        );
-
-
-      let completed = 0;
-
-
-      images.forEach(
-        function(image, index) {
-
-          image.order = index;
-
-
-          const request =
-            store.put(image);
-
-
-          request.onsuccess =
-            function() {
-
-              completed++;
-
-
-              if (
-                completed ===
-                images.length
-              ) {
-
-                resolve();
-
-              }
-
-            };
-
-
-          request.onerror =
-            function() {
-
-              reject(
-                request.error
-              );
-
-            };
-
-        }
-      );
-
-    }
-  );
-
-}
-
-
-/* =====================================================
+/* =========================================================
    DOM
-===================================================== */
+========================================================= */
 
-const fileInput =
-  document.getElementById(
-    "fileInput"
-  );
+const fileInput = document.getElementById("fileInput");
+const preview = document.getElementById("preview");
+const info = document.getElementById("info");
+const saveStatus = document.getElementById("saveStatus");
 
-const preview =
-  document.getElementById(
-    "preview"
-  );
-
-const info =
-  document.getElementById(
-    "info"
-  );
-
-const saveStatus =
-  document.getElementById(
-    "saveStatus"
-  );
-
-const pdfButton =
-  document.getElementById(
-    "pdfButton"
-  );
-
+const pdfButton = document.getElementById("pdfButton");
 const deleteModeButton =
-  document.getElementById(
-    "deleteModeButton"
-  );
+  document.getElementById("deleteModeButton");
 
 const clearButton =
-  document.getElementById(
-    "clearButton"
-  );
+  document.getElementById("clearButton");
 
 const heightInput =
-  document.getElementById(
-    "heightInput"
-  );
+  document.getElementById("heightInput");
 
 const gapInput =
-  document.getElementById(
-    "gapInput"
-  );
+  document.getElementById("gapInput");
 
 const marginInput =
-  document.getElementById(
-    "marginInput"
-  );
+  document.getElementById("marginInput");
 
 const deleteModeMessage =
-  document.getElementById(
-    "deleteModeMessage"
-  );
+  document.getElementById("deleteModeMessage");
 
 
-/* =====================================================
+/* =========================================================
    状態
-===================================================== */
+========================================================= */
 
+let db = null;
 let images = [];
-
 let deleteMode = false;
 
 
-/* =====================================================
-   DB読み込み
-===================================================== */
+/* =========================================================
+   IndexedDB
+========================================================= */
 
-async function loadImages() {
+function openDatabase(){
 
-  images =
-    await getAllImages();
+  return new Promise((resolve,reject)=>{
+
+    const request =
+      indexedDB.open(DB_NAME,DB_VERSION);
+
+    request.onupgradeneeded = e => {
+
+      const database = e.target.result;
+
+      let store;
+
+      if(!database.objectStoreNames.contains(STORE_NAME)){
+
+        store = database.createObjectStore(
+          STORE_NAME,
+          {
+            keyPath:"id",
+            autoIncrement:true
+          }
+        );
+
+      }else{
+
+        store = e.target.transaction.objectStore(
+          STORE_NAME
+        );
+
+      }
+
+      /*
+        回転角度は新しく追加した項目。
+
+        既存データには rotation がないので、
+        その場合は 0° として扱います。
+      */
+    };
+
+    request.onsuccess = e => {
+
+      db = e.target.result;
+
+      resolve(db);
+
+    };
+
+    request.onerror = e => {
+
+      reject(e.target.error);
+
+    };
+
+  });
+
+}
 
 
-  /*
-   * 並び順を維持
-   */
+/* =========================================================
+   画像取得
+========================================================= */
 
-  images.sort(
-    function(a, b) {
+function getAllImages(){
 
-      return (
-        (a.order ?? a.id) -
-        (b.order ?? b.id)
-      );
+  return new Promise((resolve,reject)=>{
 
-    }
-  );
+    const transaction =
+      db.transaction(STORE_NAME,"readonly");
+
+    const store =
+      transaction.objectStore(STORE_NAME);
+
+    const request =
+      store.getAll();
+
+    request.onsuccess = ()=>{
+
+      const result = request.result || [];
+
+      result.sort((a,b)=>{
+
+        const ao =
+          typeof a.order === "number"
+            ? a.order
+            : a.id;
+
+        const bo =
+          typeof b.order === "number"
+            ? b.order
+            : b.id;
+
+        return ao-bo;
+
+      });
+
+      resolve(result);
+
+    };
+
+    request.onerror = e => {
+
+      reject(e.target.error);
+
+    };
+
+  });
+
+}
 
 
-  await buildLayout();
+/* =========================================================
+   画像保存
+========================================================= */
+
+function saveImage(blob,name){
+
+  return new Promise((resolve,reject)=>{
+
+    const transaction =
+      db.transaction(STORE_NAME,"readwrite");
+
+    const store =
+      transaction.objectStore(STORE_NAME);
+
+    const request =
+      store.add({
+
+        blob:blob,
+
+        name:name,
+
+        created:Date.now(),
+
+        order:Date.now(),
+
+        /*
+          新規画像は回転なし
+        */
+        rotation:0
+
+      });
+
+    request.onsuccess = ()=>resolve(request.result);
+
+    request.onerror =
+      e => reject(e.target.error);
+
+  });
+
+}
 
 
-  if (
-    images.length > 0
-  ) {
+/* =========================================================
+   画像削除
+========================================================= */
 
-    saveStatus.textContent =
-      "✓ 自動保存されています";
+function deleteImage(id){
 
-  } else {
+  return new Promise((resolve,reject)=>{
 
-    saveStatus.textContent =
-      "画像を追加すると自動保存されます";
+    const transaction =
+      db.transaction(STORE_NAME,"readwrite");
+
+    const store =
+      transaction.objectStore(STORE_NAME);
+
+    const request =
+      store.delete(id);
+
+    request.onsuccess = ()=>resolve();
+
+    request.onerror =
+      e => reject(e.target.error);
+
+  });
+
+}
+
+
+/* =========================================================
+   全削除
+========================================================= */
+
+function clearDatabase(){
+
+  return new Promise((resolve,reject)=>{
+
+    const transaction =
+      db.transaction(STORE_NAME,"readwrite");
+
+    const store =
+      transaction.objectStore(STORE_NAME);
+
+    const request =
+      store.clear();
+
+    request.onsuccess = ()=>resolve();
+
+    request.onerror =
+      e => reject(e.target.error);
+
+  });
+
+}
+
+
+/* =========================================================
+   並び順保存
+========================================================= */
+
+function saveOrder(){
+
+  return new Promise((resolve,reject)=>{
+
+    const transaction =
+      db.transaction(STORE_NAME,"readwrite");
+
+    const store =
+      transaction.objectStore(STORE_NAME);
+
+    images.forEach((image,index)=>{
+
+      image.order = index;
+
+      store.put(image);
+
+    });
+
+    transaction.oncomplete = ()=>resolve();
+
+    transaction.onerror =
+      e => reject(e.target.error);
+
+  });
+
+}
+
+
+/* =========================================================
+   回転保存
+========================================================= */
+
+function saveRotation(image){
+
+  return new Promise((resolve,reject)=>{
+
+    const transaction =
+      db.transaction(STORE_NAME,"readwrite");
+
+    const store =
+      transaction.objectStore(STORE_NAME);
+
+    store.put(image);
+
+    transaction.oncomplete = ()=>resolve();
+
+    transaction.onerror =
+      e => reject(e.target.error);
+
+  });
+
+}
+
+
+/* =========================================================
+   画像を読み込み
+========================================================= */
+
+async function loadImages(){
+
+  try{
+
+    images = await getAllImages();
+
+    /*
+      古い画像には rotation が存在しないので
+      0°として初期化
+    */
+    images.forEach(image=>{
+
+      if(typeof image.rotation !== "number"){
+
+        image.rotation = 0;
+
+      }
+
+    });
+
+    await buildLayout();
+
+  }catch(error){
+
+    console.error(error);
+
+    info.textContent =
+      "画像の読み込みに失敗しました。";
 
   }
 
 }
 
 
-/* =====================================================
-   画像追加
-===================================================== */
+/* =========================================================
+   画像の自然サイズ取得
+========================================================= */
 
-fileInput.addEventListener(
-  "change",
-  async function(event) {
+function getImageRatio(blob){
 
-    const files =
-      Array.from(
-        event.target.files
+  return new Promise((resolve,reject)=>{
+
+    const url =
+      URL.createObjectURL(blob);
+
+    const img =
+      new Image();
+
+    img.onload = ()=>{
+
+      const ratio =
+        img.naturalWidth /
+        img.naturalHeight;
+
+      URL.revokeObjectURL(url);
+
+      resolve(ratio);
+
+    };
+
+    img.onerror = ()=>{
+
+      URL.revokeObjectURL(url);
+
+      reject(
+        new Error("画像を読み込めませんでした")
       );
 
+    };
 
-    if (
-      files.length === 0
-    ) {
+    img.src = url;
 
-      return;
+  });
 
-    }
-
-
-    saveStatus.textContent =
-      "保存中…";
+}
 
 
-    try {
+/* =========================================================
+   回転を考慮した画像比率
+========================================================= */
 
-      for (
-        const file of files
-      ) {
+async function getDisplayedRatio(image){
 
-        if (
-          !file.type.startsWith(
-            "image/"
-          )
-        ) {
+  let ratio =
+    await getImageRatio(image.blob);
 
-          continue;
+  const rotation =
+    image.rotation || 0;
 
-        }
+  /*
+    90° / 270°なら
+    縦横が入れ替わる
+  */
+  if(rotation === 90 || rotation === 270){
 
-
-        await saveImage(
-          file,
-          file.name
-        );
-
-      }
-
-
-      await loadImages();
-
-
-      saveStatus.textContent =
-        "✓ 自動保存しました";
-
-
-    } catch(error) {
-
-      console.error(error);
-
-      saveStatus.textContent =
-        "保存に失敗しました";
-
-    }
-
-
-    /*
-     * 同じファイルを再選択可能
-     */
-
-    fileInput.value = "";
+    ratio = 1 / ratio;
 
   }
-);
+
+  return ratio;
+
+}
 
 
-/* =====================================================
-   A4レイアウト
-===================================================== */
+/* =========================================================
+   A4レイアウト作成
+========================================================= */
 
-async function buildLayout() {
+async function buildLayout(){
 
-  preview.innerHTML = "";
+  if(!images.length){
 
+    preview.innerHTML = `
+      <div class="empty">
+        📷 画像を追加すると、ここにA4レイアウトが表示されます
+      </div>
+    `;
 
-  if (
-    images.length === 0
-  ) {
-
-    info.textContent =
-      "画像はまだありません";
+    info.textContent = "";
 
     return;
 
   }
 
 
-  const A4_WIDTH = 297;
-
-  const A4_HEIGHT = 210;
-
-
-  const targetHeight =
-    Number(
-      heightInput.value
+  const height =
+    Math.max(
+      1,
+      parseFloat(heightInput.value) || 4.5
     ) * 10;
+
 
   const gap =
-    Number(
-      gapInput.value
+    Math.max(
+      0,
+      parseFloat(gapInput.value) || 0.3
     ) * 10;
+
 
   const margin =
-    Number(
-      marginInput.value
+    Math.max(
+      0,
+      parseFloat(marginInput.value) || 0.5
     ) * 10;
 
 
-  /*
-   * 元画像の比率取得
-   */
-
-  const measured =
-    await Promise.all(
-
-      images.map(
-        function(item) {
-
-          return new Promise(
-            function(resolve) {
-
-              const url =
-                URL.createObjectURL(
-                  item.blob
-                );
-
-              const img =
-                new Image();
+  const usableWidth =
+    A4_WIDTH - margin * 2;
 
 
-              img.onload =
-                function() {
-
-                  const ratio =
-                    img.naturalWidth /
-                    img.naturalHeight;
-
-
-                  URL.revokeObjectURL(
-                    url
-                  );
-
-
-                  resolve({
-
-                    image: item,
-
-                    ratio: ratio
-
-                  });
-
-                };
-
-
-              img.onerror =
-                function() {
-
-                  URL.revokeObjectURL(
-                    url
-                  );
-
-
-                  resolve({
-
-                    image: item,
-
-                    ratio: 1
-
-                  });
-
-                };
-
-
-              img.src = url;
-
-            }
-          );
-
-        }
-      )
-
-    );
+  const usableHeight =
+    A4_HEIGHT - margin * 2;
 
 
   const pages = [];
 
-  let page = [];
+  let currentPage = [];
 
   let x = margin;
 
@@ -1214,319 +897,369 @@ async function buildLayout() {
   let rowHeight = 0;
 
 
-  measured.forEach(
-    function(data) {
+  for(const image of images){
 
-      let h =
-        targetHeight;
-
-      let w =
-        h * data.ratio;
+    const ratio =
+      await getDisplayedRatio(image);
 
 
-      const usableWidth =
-        A4_WIDTH -
-        margin * 2;
+    /*
+      基本高さ
+    */
+    let itemHeight = height;
+
+    let itemWidth =
+      itemHeight * ratio;
 
 
-      /*
-       * 幅がA4を超える画像だけ縮小
-       */
+    /*
+      横幅がA4の使用可能幅を超える場合だけ
+      個別に縮小する
+    */
+    if(itemWidth > usableWidth){
 
-      if (
-        w > usableWidth
-      ) {
+      itemWidth = usableWidth;
 
-        w = usableWidth;
-
-        h =
-          w / data.ratio;
-
-      }
-
-
-      /*
-       * 横に入らなければ次の段
-       */
-
-      if (
-        x !== margin &&
-        x + w >
-          A4_WIDTH - margin
-      ) {
-
-        x = margin;
-
-        y +=
-          rowHeight + gap;
-
-        rowHeight = 0;
-
-      }
-
-
-      /*
-       * 下に入らなければ次ページ
-       */
-
-      if (
-        y + h >
-          A4_HEIGHT - margin
-      ) {
-
-        if (
-          page.length > 0
-        ) {
-
-          pages.push(page);
-
-        }
-
-
-        page = [];
-
-        x = margin;
-
-        y = margin;
-
-        rowHeight = 0;
-
-      }
-
-
-      page.push({
-
-        image: data.image,
-
-        x: x,
-
-        y: y,
-
-        width: w,
-
-        height: h
-
-      });
-
-
-      x +=
-        w + gap;
-
-
-      rowHeight =
-        Math.max(
-          rowHeight,
-          h
-        );
+      itemHeight =
+        itemWidth / ratio;
 
     }
-  );
 
 
-  if (
-    page.length > 0
-  ) {
+    /*
+      横に入らない場合は改行
+    */
+    if(
+      x > margin &&
+      x + itemWidth > A4_WIDTH - margin
+    ){
 
-    pages.push(page);
+      x = margin;
+
+      y += rowHeight + gap;
+
+      rowHeight = 0;
+
+    }
+
+
+    /*
+      縦に入らない場合は新しいページ
+    */
+    if(
+      y + itemHeight >
+      A4_HEIGHT - margin
+    ){
+
+      pages.push(currentPage);
+
+      currentPage = [];
+
+      x = margin;
+
+      y = margin;
+
+      rowHeight = 0;
+
+    }
+
+
+    currentPage.push({
+
+      image:image,
+
+      left:x,
+
+      top:y,
+
+      width:itemWidth,
+
+      height:itemHeight
+
+    });
+
+
+    x += itemWidth + gap;
+
+    rowHeight =
+      Math.max(
+        rowHeight,
+        itemHeight
+      );
 
   }
 
 
-  renderPages(pages);
+  if(currentPage.length){
+
+    pages.push(currentPage);
+
+  }
+
+
+  renderPages(pages,margin);
 
 }
 
 
-/* =====================================================
-   A4描画
-===================================================== */
+/* =========================================================
+   A4ページ描画
+========================================================= */
 
-function renderPages(
-  pages
-) {
+function renderPages(pages){
 
   preview.innerHTML = "";
 
+  pages.forEach((pageItems,pageIndex)=>{
 
-  pages.forEach(
-    function(pageItems) {
+    const page =
+      document.createElement("div");
 
-      const page =
-        document.createElement(
-          "div"
-        );
-
-      page.className =
-        "page";
+    page.className = "page";
 
 
-      pageItems.forEach(
-        function(item) {
+    pageItems.forEach(itemData=>{
 
-          const box =
-            document.createElement(
-              "div"
-            );
-
-          box.className =
-            "item";
+      const image =
+        itemData.image;
 
 
-          box.dataset.id =
-            item.image.id;
+      const item =
+        document.createElement("div");
+
+      item.className = "item";
+
+      item.draggable =
+        !deleteMode;
 
 
-          box.draggable =
-            !deleteMode;
+      item.style.left =
+        `${itemData.left}mm`;
+
+      item.style.top =
+        `${itemData.top}mm`;
+
+      item.style.width =
+        `${itemData.width}mm`;
+
+      item.style.height =
+        `${itemData.height}mm`;
 
 
-          box.style.left =
-            item.x + "mm";
+      /*
+        画像
+      */
 
-          box.style.top =
-            item.y + "mm";
+      const img =
+        document.createElement("img");
 
-          box.style.width =
-            item.width + "mm";
+      const imageUrl =
+        URL.createObjectURL(image.blob);
 
-          box.style.height =
-            item.height + "mm";
+      img.src = imageUrl;
 
+      img.alt =
+        image.name || "画像";
 
-          const img =
-            document.createElement(
-              "img"
-            );
+      /*
+        回転
+      */
+      const rotation =
+        image.rotation || 0;
 
-
-          img.src =
-            URL.createObjectURL(
-              item.image.blob
-            );
-
-
-          box.appendChild(img);
+      img.style.transform =
+        `rotate(${rotation}deg)`;
 
 
-          /*
-           * 削除マーク
-           */
+      /*
+        回転ボタン
+      */
 
-          const deleteMark =
-            document.createElement(
-              "div"
-            );
+      const rotateButton =
+        document.createElement("button");
 
-          deleteMark.className =
-            "delete-mark";
+      rotateButton.className =
+        "rotate-button";
 
-          deleteMark.textContent =
-            "×";
+      rotateButton.type =
+        "button";
 
+      rotateButton.textContent =
+        "↻";
 
-          box.appendChild(
-            deleteMark
-          );
-
-
-          page.appendChild(box);
+      rotateButton.title =
+        `回転：${rotation}°`;
 
 
-          /*
-           * 削除モード
-           */
+      rotateButton.addEventListener(
+        "click",
+        async event=>{
 
-          box.addEventListener(
-            "click",
-            async function(event) {
+          event.preventDefault();
 
-              if (
-                !deleteMode
-              ) {
+          event.stopPropagation();
 
-                return;
+          if(deleteMode){
 
-              }
+            return;
 
-
-              event.preventDefault();
-
-              event.stopPropagation();
-
-
-              const id =
-                Number(
-                  box.dataset.id
-                );
-
-
-              try {
-
-                await deleteImage(id);
-
-                await loadImages();
-
-
-                saveStatus.textContent =
-                  "✓ 画像を削除しました";
-
-              } catch(error) {
-
-                console.error(error);
-
-                saveStatus.textContent =
-                  "削除に失敗しました";
-
-              }
-
-            }
-          );
+          }
 
 
           /*
-           * ドラッグ
-           */
+            90°ずつ回転
+          */
 
-          setupDrag(
-            box,
-            item.image.id
-          );
+          image.rotation =
+            ((image.rotation || 0) + 90) % 360;
+
+
+          /*
+            保存
+          */
+
+          try{
+
+            await saveRotation(image);
+
+            saveStatus.textContent =
+              "✓ 回転を保存しました";
+
+          }catch(error){
+
+            console.error(error);
+
+            saveStatus.textContent =
+              "⚠ 回転の保存に失敗しました";
+
+          }
+
+
+          /*
+            回転後の縦横比で
+            A4をもう一度自動配置
+          */
+
+          await buildLayout();
 
         }
       );
 
 
-      preview.appendChild(page);
+      /*
+        削除モード用 ×
+      */
 
-    }
-  );
+      if(deleteMode){
 
+        const deleteMark =
+          document.createElement("div");
+
+        deleteMark.className =
+          "delete-mark";
+
+        deleteMark.textContent =
+          "×";
+
+        item.appendChild(deleteMark);
+
+      }
+
+
+      /*
+        画像クリック
+      */
+
+      item.addEventListener(
+        "click",
+        async event=>{
+
+          /*
+            回転ボタンを押した場合は
+            ここでは何もしない
+          */
+          if(
+            event.target === rotateButton
+          ){
+
+            return;
+
+          }
+
+
+          if(!deleteMode){
+
+            return;
+
+          }
+
+
+          try{
+
+            await deleteImage(image.id);
+
+            images =
+              images.filter(
+                x => x.id !== image.id
+              );
+
+            await saveOrder();
+
+            saveStatus.textContent =
+              "✓ 画像を削除しました";
+
+            await buildLayout();
+
+          }catch(error){
+
+            console.error(error);
+
+            saveStatus.textContent =
+              "⚠ 削除に失敗しました";
+
+          }
+
+        }
+      );
+
+
+      item.appendChild(img);
+
+      item.appendChild(rotateButton);
+
+      setupDrag(item,image);
+
+
+      page.appendChild(item);
+
+    });
+
+
+    preview.appendChild(page);
+
+  });
+
+
+  const pageCount =
+    pages.length;
 
   info.textContent =
-    images.length +
-    "枚 / " +
-    pages.length +
-    "ページ";
+    `${images.length}枚 / A4 ${pageCount}ページ`;
 
 }
 
 
-/* =====================================================
+/* =========================================================
    ドラッグ＆ドロップ
-===================================================== */
+========================================================= */
 
-function setupDrag(
-  element,
-  id
-) {
+function setupDrag(item,targetImage){
 
-  element.addEventListener(
+  item.addEventListener(
     "dragstart",
-    function(event) {
+    event=>{
 
-      if (
-        deleteMode
-      ) {
+      if(deleteMode){
 
         event.preventDefault();
 
@@ -1535,76 +1268,41 @@ function setupDrag(
       }
 
 
-      element.classList.add(
-        "dragging"
-      );
-
+      event.dataTransfer.effectAllowed =
+        "move";
 
       event.dataTransfer.setData(
         "text/plain",
-        String(id)
+        String(targetImage.id)
       );
 
     }
   );
 
 
-  element.addEventListener(
-    "dragend",
-    function() {
-
-      element.classList.remove(
-        "dragging"
-      );
-
-
-      document
-        .querySelectorAll(
-          ".drag-over"
-        )
-        .forEach(
-          function(el) {
-
-            el.classList.remove(
-              "drag-over"
-            );
-
-          }
-        );
-
-    }
-  );
-
-
-  element.addEventListener(
+  item.addEventListener(
     "dragover",
-    function(event) {
+    event=>{
 
-      if (
-        deleteMode
-      ) {
+      if(deleteMode){
 
         return;
 
       }
 
-
       event.preventDefault();
 
-
-      element.classList.add(
-        "drag-over"
-      );
+      item.classList.add("drag-over");
 
     }
   );
 
 
-  element.addEventListener(
+  item.addEventListener(
     "dragleave",
-    function() {
+    ()=>{
 
-      element.classList.remove(
+      item.classList.remove(
         "drag-over"
       );
 
@@ -1612,28 +1310,24 @@ function setupDrag(
   );
 
 
-  element.addEventListener(
+  item.addEventListener(
     "drop",
-    async function(event) {
+    async event=>{
 
-      if (
-        deleteMode
-      ) {
+      if(deleteMode){
 
         return;
 
       }
 
-
       event.preventDefault();
 
-
-      element.classList.remove(
+      item.classList.remove(
         "drag-over"
       );
 
 
-      const fromId =
+      const draggedId =
         Number(
           event.dataTransfer.getData(
             "text/plain"
@@ -1641,13 +1335,16 @@ function setupDrag(
         );
 
 
-      const toId =
-        Number(id);
+      if(!draggedId){
+
+        return;
+
+      }
 
 
-      if (
-        fromId === toId
-      ) {
+      if(
+        draggedId === targetImage.id
+      ){
 
         return;
 
@@ -1656,43 +1353,33 @@ function setupDrag(
 
       const fromIndex =
         images.findIndex(
-          function(item) {
-
-            return item.id === fromId;
-
-          }
+          image =>
+            image.id === draggedId
         );
 
 
       const toIndex =
         images.findIndex(
-          function(item) {
-
-            return item.id === toId;
-
-          }
+          image =>
+            image.id === targetImage.id
         );
 
 
-      if (
+      if(
         fromIndex === -1 ||
         toIndex === -1
-      ) {
+      ){
 
         return;
 
       }
 
 
-      /*
-       * 順番を移動
-       */
-
-      const moved =
+      const [moved] =
         images.splice(
           fromIndex,
           1
-        )[0];
+        );
 
 
       images.splice(
@@ -1702,21 +1389,10 @@ function setupDrag(
       );
 
 
-      try {
+      await saveOrder();
 
-        await saveOrder();
-
-
-        saveStatus.textContent =
-          "✓ 並び順を保存しました";
-
-
-      } catch(error) {
-
-        console.error(error);
-
-      }
-
+      saveStatus.textContent =
+        "✓ 並び順を保存しました";
 
       await buildLayout();
 
@@ -1726,13 +1402,82 @@ function setupDrag(
 }
 
 
-/* =====================================================
-   削除モードON/OFF
-===================================================== */
+/* =========================================================
+   画像追加
+========================================================= */
+
+fileInput.addEventListener(
+  "change",
+  async event=>{
+
+    const files =
+      Array.from(
+        event.target.files || []
+      );
+
+
+    if(!files.length){
+
+      return;
+
+    }
+
+
+    saveStatus.textContent =
+      "画像を保存しています…";
+
+
+    try{
+
+      for(const file of files){
+
+        if(
+          !file.type.startsWith("image/")
+        ){
+
+          continue;
+
+        }
+
+        await saveImage(
+          file,
+          file.name
+        );
+
+      }
+
+
+      saveStatus.textContent =
+        `✓ ${files.length}枚追加しました`;
+
+      /*
+        同じファイルをもう一度選択できるように
+      */
+      fileInput.value = "";
+
+
+      await loadImages();
+
+    }catch(error){
+
+      console.error(error);
+
+      saveStatus.textContent =
+        "⚠ 画像の保存に失敗しました";
+
+    }
+
+  }
+);
+
+
+/* =========================================================
+   削除モード
+========================================================= */
 
 deleteModeButton.addEventListener(
   "click",
-  async function() {
+  async ()=>{
 
     deleteMode =
       !deleteMode;
@@ -1750,168 +1495,70 @@ deleteModeButton.addEventListener(
     );
 
 
-    document.body.classList.toggle(
-      "delete-mode",
-      deleteMode
-    );
+    if(deleteMode){
 
+      deleteModeButton.textContent =
+        "🗑️ 削除モード終了";
 
-    /*
-     * 削除モードに入ったら
-     * ドラッグを無効化
-     */
+    }else{
 
-    await buildLayout();
-
-
-    if (
-      deleteMode
-    ) {
-
-      saveStatus.textContent =
-        "削除モード中";
-
-    } else {
-
-      saveStatus.textContent =
-        "通常モード";
+      deleteModeButton.textContent =
+        "🗑️ 削除モード";
 
     }
+
+
+    await buildLayout();
 
   }
 );
 
 
-/* =====================================================
-   設定変更
-===================================================== */
-
-heightInput.addEventListener(
-  "change",
-  buildLayout
-);
-
-gapInput.addEventListener(
-  "change",
-  buildLayout
-);
-
-marginInput.addEventListener(
-  "change",
-  buildLayout
-);
-
-
-/* =====================================================
-   PDF
-===================================================== */
-
-pdfButton.addEventListener(
-  "click",
-  async function() {
-
-    if (
-      images.length === 0
-    ) {
-
-      alert(
-        "先にスクショを追加してね！"
-      );
-
-      return;
-
-    }
-
-
-    /*
-     * PDF出力時は削除モードを解除
-     */
-
-    deleteMode = false;
-
-    deleteModeButton.classList.remove(
-      "active"
-    );
-
-    deleteModeMessage.classList.remove(
-      "show"
-    );
-
-    document.body.classList.remove(
-      "delete-mode"
-    );
-
-
-    await buildLayout();
-
-
-    setTimeout(
-      function() {
-
-        window.print();
-
-      },
-      500
-    );
-
-  }
-);
-
-
-/* =====================================================
-   全削除
-===================================================== */
+/* =========================================================
+   全部削除
+========================================================= */
 
 clearButton.addEventListener(
   "click",
-  async function() {
+  async ()=>{
 
-    if (
-      images.length === 0
-    ) {
+    if(!images.length){
 
       return;
 
     }
 
-
-    /*
-     * ブラウザ標準confirmは使わない
-     */
 
     const answer =
       prompt(
-        "全部削除する場合は「削除」と入力してください"
+        '全部削除する場合は「削除」と入力してください'
       );
 
 
-    if (
-      answer !== "削除"
-    ) {
+    if(answer !== "削除"){
 
       return;
 
     }
 
 
-    try {
+    try{
 
       await clearDatabase();
 
-
-      await loadImages();
-
+      images = [];
 
       saveStatus.textContent =
         "✓ すべて削除しました";
 
+      await buildLayout();
 
-    } catch(error) {
+    }catch(error){
 
       console.error(error);
 
       saveStatus.textContent =
-        "削除に失敗しました";
+        "⚠ 削除に失敗しました";
 
     }
 
@@ -1919,28 +1566,109 @@ clearButton.addEventListener(
 );
 
 
-/* =====================================================
+/* =========================================================
+   設定変更
+========================================================= */
+
+[
+  heightInput,
+  gapInput,
+  marginInput
+].forEach(input=>{
+
+  input.addEventListener(
+    "change",
+    ()=>{
+
+      buildLayout();
+
+    }
+  );
+
+});
+
+
+/* =========================================================
+   PDF / 印刷
+========================================================= */
+
+pdfButton.addEventListener(
+  "click",
+  async ()=>{
+
+    if(!images.length){
+
+      alert(
+        "まず画像を追加してください"
+      );
+
+      return;
+
+    }
+
+
+    /*
+      印刷時は削除モードを解除
+    */
+
+    if(deleteMode){
+
+      deleteMode = false;
+
+      deleteModeButton.classList.remove(
+        "active"
+      );
+
+      deleteModeButton.textContent =
+        "🗑️ 削除モード";
+
+      deleteModeMessage.classList.remove(
+        "show"
+      );
+
+    }
+
+
+    await buildLayout();
+
+
+    /*
+      描画が落ち着いてから印刷
+    */
+
+    setTimeout(()=>{
+
+      window.print();
+
+    },500);
+
+  }
+);
+
+
+/* =========================================================
    起動
-===================================================== */
+========================================================= */
 
-(async function() {
+(async function(){
 
-  try {
+  try{
 
     await openDatabase();
 
     await loadImages();
 
-  } catch(error) {
+  }catch(error){
 
     console.error(error);
 
-    saveStatus.textContent =
-      "保存機能を開始できませんでした";
+    info.textContent =
+      "データベースを開けませんでした。";
 
   }
 
 })();
+
 </script>
 
 </body>
